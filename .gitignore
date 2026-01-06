@@ -36,7 +36,9 @@ playground.xcworkspace
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/
 # Package.pins
-# .build/
+# Package.resolved
+.build/
+.swiftpm/
 
 ## CocoaPods
 # We recommend against adding the Pods directory to your .gitignore. However
@@ -50,12 +52,14 @@ playground.xcworkspace
 
 ## Carthage
 # Check out their guide on: https://github.com/Carthage/Carthage#quick-start
-# Carthage/Build/
+Carthage/Build/
 
 ## fastlane
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate them.
-# fastlane/screenshots
-# fastlane/test_output
+fastlane/screenshots
+fastlane/test_output
+fastlane/report.xml
+fastlane/Preview.html
 
 ## Polyglot
 # https://github.com/polyglot/polyglot
