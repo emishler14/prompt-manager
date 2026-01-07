@@ -16,6 +16,7 @@ class GeminiService {
     /// - Returns: A generated name (3-6 words) or nil if failed
     func generateName(for content: String) async -> String? {
         guard let apiKey = KeychainService.getAPIKey(), !apiKey.isEmpty else {
+            print("[GeminiService] No API key found - falling back to timestamp")
             return nil
         }
 
@@ -32,8 +33,14 @@ class GeminiService {
 
         do {
             let response = try await callGeminiAPI(prompt: prompt, apiKey: apiKey)
-            return cleanGeneratedName(response)
+            let name = cleanGeneratedName(response)
+            print("[GeminiService] Generated name: \(name)")
+            return name
+        } catch let error as GeminiError {
+            print("[GeminiService] API error: \(error.localizedDescription)")
+            return nil
         } catch {
+            print("[GeminiService] Unexpected error: \(error.localizedDescription)")
             return nil
         }
     }
@@ -99,7 +106,8 @@ class GeminiService {
         }
 
         guard httpResponse.statusCode == 200 else {
-            throw GeminiError.apiError(statusCode: httpResponse.statusCode)
+            let bodyString = String(data: data, encoding: .utf8)
+            throw GeminiError.apiError(statusCode: httpResponse.statusCode, body: bodyString)
         }
 
         // Parse the response
@@ -145,7 +153,7 @@ class GeminiService {
 enum GeminiError: Error {
     case invalidURL
     case invalidResponse
-    case apiError(statusCode: Int)
+    case apiError(statusCode: Int, body: String?)
     case parseError
 
     var localizedDescription: String {
@@ -154,8 +162,26 @@ enum GeminiError: Error {
             return "Invalid API URL"
         case .invalidResponse:
             return "Invalid response from server"
-        case .apiError(let statusCode):
-            return "API error (status code: \(statusCode))"
+        case .apiError(let statusCode, let body):
+            var message = "API error (status \(statusCode))"
+            switch statusCode {
+            case 400:
+                message = "Bad request - check API key format"
+            case 401:
+                message = "Invalid API key"
+            case 403:
+                message = "API key doesn't have permission"
+            case 429:
+                message = "Rate limited - too many requests"
+            case 500...599:
+                message = "Gemini server error (\(statusCode))"
+            default:
+                break
+            }
+            if let body = body {
+                print("[GeminiService] Response body: \(body)")
+            }
+            return message
         case .parseError:
             return "Failed to parse API response"
         }

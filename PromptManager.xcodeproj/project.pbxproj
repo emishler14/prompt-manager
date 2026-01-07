@@ -24,6 +24,8 @@
 		A1000500A1000500A1000500 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000501A1000501A1000501 /* KeychainService.swift */; };
 		A1000502A1000502A1000502 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000503A1000503A1000503 /* GeminiService.swift */; };
 		A1000600A1000600A1000600 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000601A1000601A1000601 /* ToastView.swift */; };
+		A1000700A1000700A1000700 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000701A1000701A1000701 /* NetworkMonitor.swift */; };
+		A1000702A1000702A1000702 /* BackgroundRenameService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000703A1000703A1000703 /* BackgroundRenameService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +47,8 @@
 		A1000501A1000501A1000501 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		A1000503A1000503A1000503 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 		A1000601A1000601A1000601 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		A1000701A1000701A1000701 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		A1000703A1000703A1000703 /* BackgroundRenameService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRenameService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +104,8 @@
 				A1000403A1000403A1000403 /* PasteService.swift */,
 				A1000501A1000501A1000501 /* KeychainService.swift */,
 				A1000503A1000503A1000503 /* GeminiService.swift */,
+				A1000701A1000701A1000701 /* NetworkMonitor.swift */,
+				A1000703A1000703A1000703 /* BackgroundRenameService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -205,6 +211,8 @@
 				A1000500A1000500A1000500 /* KeychainService.swift in Sources */,
 				A1000502A1000502A1000502 /* GeminiService.swift in Sources */,
 				A1000600A1000600A1000600 /* ToastView.swift in Sources */,
+				A1000700A1000700A1000700 /* NetworkMonitor.swift in Sources */,
+				A1000702A1000702A1000702 /* BackgroundRenameService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

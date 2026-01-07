@@ -40,6 +40,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupKeyboardShortcuts()
         setDefaultShortcutIfNeeded()
         requestNotificationPermission()
+        setupBackgroundRename()
+    }
+
+    private func setupBackgroundRename() {
+        // Start network monitoring
+        _ = NetworkMonitor.shared
+
+        // Start background rename service to rename timestamp-named prompts
+        BackgroundRenameService.shared.start(promptStore: promptStore)
     }
 
     private func setupToastPanel() {
@@ -50,7 +59,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "text.quote", accessibilityDescription: "Prompt Manager")
+            if let image = NSImage(named: "MenuBarIcon") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                // Fallback to system symbol if custom icon not found
+                button.image = NSImage(systemSymbolName: "text.quote", accessibilityDescription: "Prompt Manager")
+            }
             button.action = #selector(togglePopover)
             button.target = self
         }
@@ -117,9 +132,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func saveTextAsPrompt(_ text: String) {
         let aiNamingEnabled = UserDefaults.standard.bool(forKey: "aiNamingEnabled")
+        let hasAPIKey = KeychainService.hasAPIKey()
+
+        print("[SavePrompt] AI naming enabled: \(aiNamingEnabled), Has API key: \(hasAPIKey)")
 
         // If AI naming is disabled or no API key, save immediately with timestamp
-        if !aiNamingEnabled || !KeychainService.hasAPIKey() {
+        if !aiNamingEnabled || !hasAPIKey {
+            print("[SavePrompt] Using timestamp name (AI disabled or no key)")
             let prompt = Prompt.withTimestampName(content: text)
             promptStore.save(prompt)
             showNotification(title: "Prompt Saved", body: prompt.name)
@@ -133,9 +152,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             let name: String
             if let aiName = await GeminiService.shared.generateName(for: text) {
+                print("[SavePrompt] AI generated name: \(aiName)")
                 name = aiName
             } else {
                 // Fallback to timestamp if AI fails
+                print("[SavePrompt] AI failed, using timestamp fallback")
                 name = "Prompt - \(Date().formatted(date: .abbreviated, time: .shortened))"
             }
 
@@ -211,7 +232,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.makeKeyAndOrderFront(nil)
         } else {
             // Create new window if none exists
-            NSApp.sendAction(Selector(("newWindowForTab:")), to: nil, from: nil)
+            NSApp.sendAction(NSSelectorFromString("newWindowForTab:"), to: nil, from: nil)
         }
     }
 }

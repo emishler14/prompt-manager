@@ -32,4 +32,10 @@ struct Prompt: Codable, Identifiable, Equatable {
         let name = "Prompt - \(formatter.string(from: Date()))"
         return Prompt(name: name, content: content)
     }
+
+    /// Returns true if this prompt has an auto-generated timestamp name (not user-customized)
+    var hasTimestampName: Bool {
+        // Match patterns like "Prompt - Jan 7, 2025 at 3:45 PM" or "Prompt - Jan 7, 2025, 3:45 PM"
+        name.hasPrefix("Prompt - ") && name.count > 10
+    }
 }

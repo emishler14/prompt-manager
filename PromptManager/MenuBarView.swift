@@ -69,7 +69,7 @@ struct MenuBarView: View {
                 .keyboardShortcut(",")
             } else {
                 Button("Settings...") {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    NSApp.sendAction(NSSelectorFromString("showSettingsWindow:"), to: nil, from: nil)
                 }
                 .keyboardShortcut(",")
             }
