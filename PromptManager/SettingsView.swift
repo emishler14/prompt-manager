@@ -212,13 +212,13 @@ struct SettingsView: View {
         connectionTestResult = nil
 
         Task {
-            let success = await GeminiService.shared.testConnection()
+            let result = await GeminiService.shared.testConnection()
 
             await MainActor.run {
                 isTestingConnection = false
                 connectionTestResult = ConnectionTestResult(
-                    isSuccess: success,
-                    message: success ? "Connected!" : "Connection failed"
+                    isSuccess: result.success,
+                    message: result.message
                 )
             }
         }

@@ -23,6 +23,7 @@
 		A1000404A1000404A1000404 /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000405A1000405A1000405 /* SearchPanelView.swift */; };
 		A1000500A1000500A1000500 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000501A1000501A1000501 /* KeychainService.swift */; };
 		A1000502A1000502A1000502 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000503A1000503A1000503 /* GeminiService.swift */; };
+		A1000600A1000600A1000600 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000601A1000601A1000601 /* ToastView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		A1000405A1000405A1000405 /* SearchPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
 		A1000501A1000501A1000501 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		A1000503A1000503A1000503 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
+		A1000601A1000601A1000601 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +110,7 @@
 				A1000203A1000203A1000203 /* OnboardingView.swift */,
 				A1000401A1000401A1000401 /* FloatingPanel.swift */,
 				A1000405A1000405A1000405 /* SearchPanelView.swift */,
+				A1000601A1000601A1000601 /* ToastView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 				A1000404A1000404A1000404 /* SearchPanelView.swift in Sources */,
 				A1000500A1000500A1000500 /* KeychainService.swift in Sources */,
 				A1000502A1000502A1000502 /* GeminiService.swift in Sources */,
+				A1000600A1000600A1000600 /* ToastView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

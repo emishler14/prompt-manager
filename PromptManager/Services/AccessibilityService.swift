@@ -26,12 +26,17 @@ class AccessibilityService {
     /// Returns nil if no text is selected or if accessibility permission is not granted
     func getSelectedText() -> String? {
         // Try accessibility API first
+        print("[DEBUG] Trying accessibility API method...")
         if let text = getSelectedTextViaAccessibility() {
+            print("[DEBUG] Got text via accessibility API: \(text.prefix(50))...")
             return text
         }
+        print("[DEBUG] Accessibility API returned nil, trying clipboard fallback...")
 
         // Fallback to clipboard method
-        return getSelectedTextViaClipboard()
+        let clipboardResult = getSelectedTextViaClipboard()
+        print("[DEBUG] Clipboard fallback result: \(clipboardResult ?? "nil")")
+        return clipboardResult
     }
 
     /// Primary method: Use Accessibility API to get selected text
@@ -85,8 +90,8 @@ class AccessibilityService {
         // Simulate Cmd+C
         simulateCopy()
 
-        // Small delay to allow the copy to complete
-        Thread.sleep(forTimeInterval: 0.1)
+        // Delay to allow the copy to complete (longer for reliability)
+        Thread.sleep(forTimeInterval: 0.2)
 
         // Check if clipboard changed (meaning copy was successful)
         guard pasteboard.changeCount != originalChangeCount else {

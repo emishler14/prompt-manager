@@ -30,14 +30,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var searchPanel: FloatingPanel?
+    private var toastPanel: ToastPanel?
     let promptStore = PromptStore()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
         setupSearchPanel()
+        setupToastPanel()
         setupKeyboardShortcuts()
         setDefaultShortcutIfNeeded()
         requestNotificationPermission()
+    }
+
+    private func setupToastPanel() {
+        toastPanel = ToastPanel()
     }
 
     private func setupMenuBar() {
@@ -81,13 +87,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleShortcutTriggered() {
+        // Debug: Check accessibility status
+        let hasAccessibility = AccessibilityService.shared.isAccessibilityEnabled()
+        print("[DEBUG] Accessibility enabled: \(hasAccessibility)")
+
+        // If no accessibility, request it and show search panel as fallback
+        if !hasAccessibility {
+            print("[DEBUG] Requesting accessibility permission...")
+            AccessibilityService.shared.requestAccessibility()
+        }
+
         // Try to capture selected text from the frontmost app
-        if let selectedText = AccessibilityService.shared.getSelectedText(),
-           !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let selectedText = AccessibilityService.shared.getSelectedText()
+        print("[DEBUG] Selected text result: \(selectedText ?? "nil")")
+
+        if let text = selectedText,
+           !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // Text found → save as new prompt (with AI naming if enabled)
-            saveTextAsPrompt(selectedText)
+            print("[DEBUG] Saving text as prompt")
+            saveTextAsPrompt(text)
         } else {
             // No text selected → show search panel
+            print("[DEBUG] No text found, showing search panel")
             showSearchPanel()
         }
     }
@@ -155,6 +176,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showNotification(title: String, body: String) {
+        // Show visual toast
+        toastPanel?.show(title: title, message: body)
+
+        // Also send system notification
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

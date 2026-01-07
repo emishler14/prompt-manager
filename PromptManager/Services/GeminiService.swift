@@ -4,8 +4,8 @@ import Foundation
 class GeminiService {
     static let shared = GeminiService()
 
-    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-    private let timeout: TimeInterval = 5.0
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
+    private let timeout: TimeInterval = 15.0
 
     private init() {}
 
@@ -39,17 +39,28 @@ class GeminiService {
     }
 
     /// Test the API connection with the stored key
-    /// - Returns: True if connection successful, false otherwise
-    func testConnection() async -> Bool {
+    /// - Returns: A result with success status and message
+    func testConnection() async -> (success: Bool, message: String) {
         guard let apiKey = KeychainService.getAPIKey(), !apiKey.isEmpty else {
-            return false
+            return (false, "No API key stored")
         }
 
         do {
             let _ = try await callGeminiAPI(prompt: "Say 'OK' if you can read this.", apiKey: apiKey)
-            return true
+            return (true, "Connected!")
+        } catch let error as GeminiError {
+            return (false, error.localizedDescription)
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                return (false, "No internet connection")
+            case .timedOut:
+                return (false, "Request timed out")
+            default:
+                return (false, "Network error: \(urlError.localizedDescription)")
+            }
         } catch {
-            return false
+            return (false, "Error: \(error.localizedDescription)")
         }
     }
 

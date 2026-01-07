@@ -62,10 +62,17 @@ struct MenuBarView: View {
                 openMainWindow()
             }
 
-            Button("Settings...") {
-                openSettings()
+            if #available(macOS 14.0, *) {
+                SettingsLink {
+                    Text("Settings...")
+                }
+                .keyboardShortcut(",")
+            } else {
+                Button("Settings...") {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }
+                .keyboardShortcut(",")
             }
-            .keyboardShortcut(",")
 
             Divider()
 
@@ -89,16 +96,6 @@ struct MenuBarView: View {
         }
         // Close the popover
         NSApp.windows.first(where: { $0.contentView is NSHostingView<MenuBarView> })?.close()
-    }
-
-    private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        // Use the standard macOS 13+ API if available, fallback for older
-        if #available(macOS 13.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
     }
 
     private func copyToClipboard(_ prompt: Prompt) {
