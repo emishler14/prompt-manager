@@ -1,14 +1,19 @@
 import SwiftUI
 import KeyboardShortcuts
+import UserNotifications
 
 @main
 struct PromptManagerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
 
     var body: some Scene {
         // Main window for prompt management
         WindowGroup("Prompt Manager") {
             MainWindowView(store: appDelegate.promptStore)
+                .sheet(isPresented: $showOnboarding) {
+                    OnboardingView(isPresented: $showOnboarding)
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {}
@@ -24,28 +29,15 @@ struct PromptManagerApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    private var searchPanel: FloatingPanel?
     let promptStore = PromptStore()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
+        setupSearchPanel()
         setupKeyboardShortcuts()
         setDefaultShortcutIfNeeded()
-
-        // Debug: Check accessibility status
-        let trusted = AXIsProcessTrusted()
-        print("🔑 Accessibility trusted: \(trusted)")
-
-        if let shortcut = KeyboardShortcuts.getShortcut(for: .triggerPromptManager) {
-            print("⌨️ Shortcut registered: \(shortcut)")
-        } else {
-            print("⚠️ No shortcut registered!")
-        }
-
-        if !trusted {
-            // Prompt for accessibility permission
-            let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-            AXIsProcessTrustedWithOptions(options)
-        }
+        requestNotificationPermission()
     }
 
     private func setupMenuBar() {
@@ -63,6 +55,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover?.contentViewController = NSHostingController(rootView: MenuBarView(promptStore: promptStore))
     }
 
+    private func setupSearchPanel() {
+        let searchView = SearchPanelView(
+            promptStore: promptStore,
+            onDismiss: { [weak self] in
+                self?.hideSearchPanel()
+            },
+            onSelectPrompt: { [weak self] prompt in
+                self?.handlePromptSelected(prompt)
+            }
+        )
+        searchPanel = FloatingPanel(contentView: searchView)
+    }
+
     private func setupKeyboardShortcuts() {
         KeyboardShortcuts.onKeyUp(for: .triggerPromptManager) { [weak self] in
             self?.handleShortcutTriggered()
@@ -76,16 +81,92 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleShortcutTriggered() {
-        print("🎯 Hotkey triggered!")
-        // Show a simple alert to confirm it works
-        DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = "Hotkey Detected!"
-            alert.informativeText = "Cmd+Shift+P was pressed successfully."
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+        // Try to capture selected text from the frontmost app
+        if let selectedText = AccessibilityService.shared.getSelectedText(),
+           !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Text found → save as new prompt (with AI naming if enabled)
+            saveTextAsPrompt(selectedText)
+        } else {
+            // No text selected → show search panel
+            showSearchPanel()
         }
+    }
+
+    // MARK: - Save with AI Naming
+
+    private func saveTextAsPrompt(_ text: String) {
+        let aiNamingEnabled = UserDefaults.standard.bool(forKey: "aiNamingEnabled")
+
+        // If AI naming is disabled or no API key, save immediately with timestamp
+        if !aiNamingEnabled || !KeychainService.hasAPIKey() {
+            let prompt = Prompt.withTimestampName(content: text)
+            promptStore.save(prompt)
+            showNotification(title: "Prompt Saved", body: prompt.name)
+            return
+        }
+
+        // Show "Saving..." notification
+        showNotification(title: "Saving...", body: "Generating name with AI")
+
+        // Use AI to generate name
+        Task {
+            let name: String
+            if let aiName = await GeminiService.shared.generateName(for: text) {
+                name = aiName
+            } else {
+                // Fallback to timestamp if AI fails
+                name = "Prompt - \(Date().formatted(date: .abbreviated, time: .shortened))"
+            }
+
+            await MainActor.run {
+                let prompt = Prompt(name: name, content: text)
+                promptStore.save(prompt)
+                showNotification(title: "Prompt Saved", body: name)
+            }
+        }
+    }
+
+    // MARK: - Search Panel
+
+    private func showSearchPanel() {
+        // Store the currently active app before showing the panel
+        PasteService.shared.storePreviousApp()
+
+        // Show the panel
+        searchPanel?.showPanel()
+    }
+
+    private func hideSearchPanel() {
+        searchPanel?.hidePanel()
+    }
+
+    private func handlePromptSelected(_ prompt: Prompt) {
+        // Hide the panel first
+        hideSearchPanel()
+
+        // Paste the prompt content into the previous app
+        PasteService.shared.pasteText(prompt.content)
+    }
+
+    // MARK: - Notifications
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    private func showNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil // Deliver immediately
+        )
+
+        UNUserNotificationCenter.current().add(request)
     }
 
     @objc private func togglePopover() {

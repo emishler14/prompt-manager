@@ -16,6 +16,13 @@
 		A1000100A1000100A1000100 /* Prompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000101A1000101A1000101 /* Prompt.swift */; };
 		A1000102A1000102A1000102 /* PromptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000103A1000103A1000103 /* PromptStore.swift */; };
 		A1000104A1000104A1000104 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000105A1000105A1000105 /* MainWindowView.swift */; };
+		A1000200A1000200A1000200 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000201A1000201A1000201 /* AccessibilityService.swift */; };
+		A1000202A1000202A1000202 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000203A1000203A1000203 /* OnboardingView.swift */; };
+		A1000400A1000400A1000400 /* FloatingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000401A1000401A1000401 /* FloatingPanel.swift */; };
+		A1000402A1000402A1000402 /* PasteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000403A1000403A1000403 /* PasteService.swift */; };
+		A1000404A1000404A1000404 /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000405A1000405A1000405 /* SearchPanelView.swift */; };
+		A1000500A1000500A1000500 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000501A1000501A1000501 /* KeychainService.swift */; };
+		A1000502A1000502A1000502 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000503A1000503A1000503 /* GeminiService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +36,13 @@
 		A1000101A1000101A1000101 /* Prompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prompt.swift; sourceTree = "<group>"; };
 		A1000103A1000103A1000103 /* PromptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptStore.swift; sourceTree = "<group>"; };
 		A1000105A1000105A1000105 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		A1000201A1000201A1000201 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
+		A1000203A1000203A1000203 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A1000401A1000401A1000401 /* FloatingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPanel.swift; sourceTree = "<group>"; };
+		A1000403A1000403A1000403 /* PasteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteService.swift; sourceTree = "<group>"; };
+		A1000405A1000405A1000405 /* SearchPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
+		A1000501A1000501A1000501 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		A1000503A1000503A1000503 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +68,8 @@
 		A1000021A1000021A1000021 /* PromptManager */ = {
 			isa = PBXGroup;
 			children = (
+				A1000300A1000300A1000300 /* Services */,
+				A1000301A1000301A1000301 /* Views */,
 				A1000002A1000002A1000002 /* PromptManagerApp.swift */,
 				A1000004A1000004A1000004 /* MenuBarView.swift */,
 				A100000BA100000BA100000B /* Constants.swift */,
@@ -73,6 +89,27 @@
 				A1000000A1000000A1000000 /* PromptManager.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1000300A1000300A1000300 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A1000201A1000201A1000201 /* AccessibilityService.swift */,
+				A1000403A1000403A1000403 /* PasteService.swift */,
+				A1000501A1000501A1000501 /* KeychainService.swift */,
+				A1000503A1000503A1000503 /* GeminiService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A1000301A1000301A1000301 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A1000203A1000203A1000203 /* OnboardingView.swift */,
+				A1000401A1000401A1000401 /* FloatingPanel.swift */,
+				A1000405A1000405A1000405 /* SearchPanelView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -157,6 +194,13 @@
 				A1000100A1000100A1000100 /* Prompt.swift in Sources */,
 				A1000102A1000102A1000102 /* PromptStore.swift in Sources */,
 				A1000104A1000104A1000104 /* MainWindowView.swift in Sources */,
+				A1000200A1000200A1000200 /* AccessibilityService.swift in Sources */,
+				A1000202A1000202A1000202 /* OnboardingView.swift in Sources */,
+				A1000400A1000400A1000400 /* FloatingPanel.swift in Sources */,
+				A1000402A1000402A1000402 /* PasteService.swift in Sources */,
+				A1000404A1000404A1000404 /* SearchPanelView.swift in Sources */,
+				A1000500A1000500A1000500 /* KeychainService.swift in Sources */,
+				A1000502A1000502A1000502 /* GeminiService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,6 +4,10 @@ import KeyboardShortcuts
 struct MenuBarView: View {
     @ObservedObject var promptStore: PromptStore
 
+    private var recentPrompts: [Prompt] {
+        Array(promptStore.prompts.prefix(5))
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             Text("Prompt Manager")
@@ -22,6 +26,34 @@ struct MenuBarView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
+            }
+
+            // Recent Prompts Section
+            if !recentPrompts.isEmpty {
+                Divider()
+
+                Text("Recent Prompts")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
+
+                ForEach(recentPrompts) { prompt in
+                    Button(action: { copyToClipboard(prompt) }) {
+                        HStack {
+                            Text(prompt.name)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer()
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                }
             }
 
             Divider()
@@ -67,6 +99,12 @@ struct MenuBarView: View {
         } else {
             NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
         }
+    }
+
+    private func copyToClipboard(_ prompt: Prompt) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(prompt.content, forType: .string)
+        promptStore.incrementUsage(id: prompt.id)
     }
 }
 

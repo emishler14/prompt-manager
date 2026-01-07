@@ -5,13 +5,44 @@ struct MainWindowView: View {
     @State private var showingAddPrompt = false
     @State private var newPromptContent = ""
     @State private var selectedPromptID: UUID?
+    @State private var searchText = ""
+
+    private var filteredPrompts: [Prompt] {
+        if searchText.isEmpty {
+            return store.prompts
+        }
+        let query = searchText.lowercased()
+        return store.prompts.filter {
+            $0.name.lowercased().contains(query) ||
+            $0.content.lowercased().contains(query)
+        }
+    }
 
     var body: some View {
         NavigationView {
             // Sidebar: Prompt List
             VStack(spacing: 0) {
+                // Search field
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Search prompts...", text: $searchText)
+                        .textFieldStyle(.plain)
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(8)
+                .background(Color(nsColor: .controlBackgroundColor))
+
+                Divider()
+
                 List(selection: $selectedPromptID) {
-                    ForEach(store.prompts) { prompt in
+                    ForEach(filteredPrompts) { prompt in
                         PromptRowView(prompt: prompt)
                             .tag(prompt.id)
                             .contextMenu {
@@ -67,7 +98,7 @@ struct MainWindowView: View {
 
     private func deletePrompts(at offsets: IndexSet) {
         for index in offsets {
-            store.delete(id: store.prompts[index].id)
+            store.delete(id: filteredPrompts[index].id)
         }
     }
 
