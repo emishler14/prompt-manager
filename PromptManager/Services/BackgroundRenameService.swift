@@ -31,7 +31,7 @@ class BackgroundRenameService {
             }
         }
 
-        print("[BackgroundRename] Service started")
+        Logger.logBackgroundRename("Service started")
     }
 
     func stop() {
@@ -44,30 +44,30 @@ class BackgroundRenameService {
     /// Process all prompts with timestamp names
     func processTimestampedPrompts() {
         guard !isProcessing else {
-            print("[BackgroundRename] Already processing, skipping")
+            Logger.logBackgroundRename("Already processing, skipping")
             return
         }
 
         // Check if AI naming is enabled
         guard UserDefaults.standard.bool(forKey: "aiNamingEnabled") else {
-            print("[BackgroundRename] AI naming is disabled, skipping")
+            Logger.logBackgroundRename("AI naming is disabled, skipping")
             return
         }
 
         // Check if we have an API key
         guard KeychainService.hasAPIKey() else {
-            print("[BackgroundRename] No API key, skipping")
+            Logger.logBackgroundRename("No API key, skipping")
             return
         }
 
         // Check if we're connected
         guard NetworkMonitor.shared.isConnected else {
-            print("[BackgroundRename] No network connection, skipping")
+            Logger.logBackgroundRename("No network connection, skipping")
             return
         }
 
         guard let store = promptStore else {
-            print("[BackgroundRename] No prompt store available")
+            Logger.logBackgroundRename("No prompt store available")
             return
         }
 
@@ -75,11 +75,11 @@ class BackgroundRenameService {
         let promptsToRename = store.prompts.filter { $0.hasTimestampName }
 
         guard !promptsToRename.isEmpty else {
-            print("[BackgroundRename] No prompts need renaming")
+            Logger.logBackgroundRename("No prompts need renaming")
             return
         }
 
-        print("[BackgroundRename] Found \(promptsToRename.count) prompts to rename")
+        Logger.logBackgroundRename("Found \(promptsToRename.count) prompts to rename")
         isProcessing = true
 
         Task {
@@ -97,11 +97,11 @@ class BackgroundRenameService {
         for prompt in prompts {
             // Check we're still connected before each request
             guard NetworkMonitor.shared.isConnected else {
-                print("[BackgroundRename] Lost connection, pausing")
+                Logger.logBackgroundRename("Lost connection, pausing")
                 break
             }
 
-            print("[BackgroundRename] Renaming: \(prompt.name)")
+            Logger.logBackgroundRename("Renaming: \(prompt.name)")
 
             if let newName = await GeminiService.shared.generateName(for: prompt.content) {
                 await MainActor.run {
@@ -110,16 +110,16 @@ class BackgroundRenameService {
                     store.update(updatedPrompt)
                 }
                 successCount += 1
-                print("[BackgroundRename] Renamed to: \(newName)")
+                Logger.logBackgroundRename("Renamed to: \(newName)")
             } else {
                 failCount += 1
-                print("[BackgroundRename] Failed to rename prompt")
+                Logger.logBackgroundRename("Failed to rename prompt", type: .error)
             }
 
             // Small delay between requests to avoid rate limiting
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         }
 
-        print("[BackgroundRename] Complete - \(successCount) renamed, \(failCount) failed")
+        Logger.logBackgroundRename("Complete - \(successCount) renamed, \(failCount) failed")
     }
 }

@@ -102,28 +102,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleShortcutTriggered() {
-        // Debug: Check accessibility status
         let hasAccessibility = AccessibilityService.shared.isAccessibilityEnabled()
-        print("[DEBUG] Accessibility enabled: \(hasAccessibility)")
+        Logger.logApp("Shortcut triggered - Accessibility enabled: \(hasAccessibility)")
 
         // If no accessibility, request it and show search panel as fallback
         if !hasAccessibility {
-            print("[DEBUG] Requesting accessibility permission...")
+            Logger.logApp("Requesting accessibility permission")
             AccessibilityService.shared.requestAccessibility()
         }
 
         // Try to capture selected text from the frontmost app
         let selectedText = AccessibilityService.shared.getSelectedText()
-        print("[DEBUG] Selected text result: \(selectedText ?? "nil")")
+        Logger.logApp("Selected text: \(selectedText != nil ? "\(selectedText!.count) chars" : "none")")
 
         if let text = selectedText,
            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // Text found → save as new prompt (with AI naming if enabled)
-            print("[DEBUG] Saving text as prompt")
+            Logger.logApp("Saving captured text as prompt")
             saveTextAsPrompt(text)
         } else {
             // No text selected → show search panel
-            print("[DEBUG] No text found, showing search panel")
+            Logger.logApp("No text selected, showing search panel")
             showSearchPanel()
         }
     }
@@ -134,11 +133,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let aiNamingEnabled = UserDefaults.standard.bool(forKey: "aiNamingEnabled")
         let hasAPIKey = KeychainService.hasAPIKey()
 
-        print("[SavePrompt] AI naming enabled: \(aiNamingEnabled), Has API key: \(hasAPIKey)")
+        Logger.logApp("Saving prompt - AI naming: \(aiNamingEnabled), Has API key: \(hasAPIKey)")
 
         // If AI naming is disabled or no API key, save immediately with timestamp
         if !aiNamingEnabled || !hasAPIKey {
-            print("[SavePrompt] Using timestamp name (AI disabled or no key)")
+            Logger.logApp("Using timestamp name (AI disabled or no key)")
             let prompt = Prompt.withTimestampName(content: text)
             promptStore.save(prompt)
             showNotification(title: "Prompt Saved", body: prompt.name)
@@ -152,11 +151,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             let name: String
             if let aiName = await GeminiService.shared.generateName(for: text) {
-                print("[SavePrompt] AI generated name: \(aiName)")
+                Logger.logApp("AI generated name: \(aiName)")
                 name = aiName
             } else {
                 // Fallback to timestamp if AI fails
-                print("[SavePrompt] AI failed, using timestamp fallback")
+                Logger.logApp("AI naming failed, using timestamp fallback")
                 name = "Prompt - \(Date().formatted(date: .abbreviated, time: .shortened))"
             }
 

@@ -26,16 +26,16 @@ class AccessibilityService {
     /// Returns nil if no text is selected or if accessibility permission is not granted
     func getSelectedText() -> String? {
         // Try accessibility API first
-        print("[DEBUG] Trying accessibility API method...")
+        Logger.logAccessibility("Trying accessibility API method")
         if let text = getSelectedTextViaAccessibility() {
-            print("[DEBUG] Got text via accessibility API: \(text.prefix(50))...")
+            Logger.logAccessibility("Got text via accessibility API (\(text.count) chars)")
             return text
         }
-        print("[DEBUG] Accessibility API returned nil, trying clipboard fallback...")
+        Logger.logAccessibility("Accessibility API returned nil, trying clipboard fallback")
 
         // Fallback to clipboard method
         let clipboardResult = getSelectedTextViaClipboard()
-        print("[DEBUG] Clipboard fallback result: \(clipboardResult ?? "nil")")
+        Logger.logAccessibility("Clipboard fallback result: \(clipboardResult != nil ? "success" : "nil")")
         return clipboardResult
     }
 
@@ -49,24 +49,26 @@ class AccessibilityService {
         let systemWide = AXUIElementCreateSystemWide()
 
         // Get the focused application
-        var focusedApp: AnyObject?
+        var focusedApp: CFTypeRef?
         let appResult = AXUIElementCopyAttributeValue(systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp)
 
-        guard appResult == .success, let appElement = focusedApp else {
+        guard appResult == .success, CFGetTypeID(focusedApp) == AXUIElementGetTypeID() else {
             return nil
         }
+        let appElement = focusedApp as! AXUIElement
 
         // Get the focused UI element within the app
-        var focusedElement: AnyObject?
-        let elementResult = AXUIElementCopyAttributeValue(appElement as! AXUIElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+        var focusedElement: CFTypeRef?
+        let elementResult = AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
 
-        guard elementResult == .success, let element = focusedElement else {
+        guard elementResult == .success, CFGetTypeID(focusedElement) == AXUIElementGetTypeID() else {
             return nil
         }
+        let element = focusedElement as! AXUIElement
 
         // Try to get selected text
-        var selectedText: AnyObject?
-        let textResult = AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSelectedTextAttribute as CFString, &selectedText)
+        var selectedText: CFTypeRef?
+        let textResult = AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selectedText)
 
         if textResult == .success, let text = selectedText as? String, !text.isEmpty {
             return text

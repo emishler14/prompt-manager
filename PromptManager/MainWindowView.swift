@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MainWindowView: View {
     @ObservedObject var store: PromptStore
@@ -6,6 +7,9 @@ struct MainWindowView: View {
     @State private var newPromptContent = ""
     @State private var selectedPromptID: UUID?
     @State private var searchText = ""
+    @State private var showingExportAlert = false
+    @State private var showingImportAlert = false
+    @State private var alertMessage = ""
 
     private var filteredPrompts: [Prompt] {
         if searchText.isEmpty {
@@ -91,8 +95,69 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 400)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(action: exportPrompts) {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .help("Export all prompts to a file")
+
+                Button(action: importPrompts) {
+                    Label("Import", systemImage: "square.and.arrow.down")
+                }
+                .help("Import prompts from a file")
+            }
+        }
         .sheet(isPresented: $showingAddPrompt) {
             AddPromptSheet(store: store, isPresented: $showingAddPrompt)
+        }
+        .alert("Export Complete", isPresented: $showingExportAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(alertMessage)
+        }
+        .alert("Import Complete", isPresented: $showingImportAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    // MARK: - Export/Import
+
+    private func exportPrompts() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "prompts-backup.json"
+        panel.title = "Export Prompts"
+        panel.message = "Choose a location to save your prompts backup"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let count = store.exportPrompts(to: url) {
+                alertMessage = "Successfully exported \(count) prompts."
+                showingExportAlert = true
+            } else {
+                alertMessage = "Failed to export prompts."
+                showingExportAlert = true
+            }
+        }
+    }
+
+    private func importPrompts() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.title = "Import Prompts"
+        panel.message = "Select a prompts backup file to import"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let count = store.importPrompts(from: url, merge: true) {
+                alertMessage = "Successfully imported \(count) new prompts."
+                showingImportAlert = true
+            } else {
+                alertMessage = "Failed to import prompts. Make sure the file is valid."
+                showingImportAlert = true
+            }
         }
     }
 
