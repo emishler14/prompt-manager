@@ -16,7 +16,7 @@ class GeminiService {
     /// - Returns: A generated name (3-6 words) or nil if failed
     func generateName(for content: String) async -> String? {
         guard let apiKey = KeychainService.getAPIKey(), !apiKey.isEmpty else {
-            print("[GeminiService] No API key found - falling back to timestamp")
+            Logger.logGemini("No API key found - falling back to timestamp")
             return nil
         }
 
@@ -34,13 +34,13 @@ class GeminiService {
         do {
             let response = try await callGeminiAPI(prompt: prompt, apiKey: apiKey)
             let name = cleanGeneratedName(response)
-            print("[GeminiService] Generated name: \(name)")
+            Logger.logGemini("Generated name: \(name)")
             return name
         } catch let error as GeminiError {
-            print("[GeminiService] API error: \(error.localizedDescription)")
+            Logger.logGemini("API error: \(error.localizedDescription)", type: .error)
             return nil
         } catch {
-            print("[GeminiService] Unexpected error: \(error.localizedDescription)")
+            Logger.logGemini("Unexpected error: \(error.localizedDescription)", type: .error)
             return nil
         }
     }
@@ -74,13 +74,14 @@ class GeminiService {
     // MARK: - Private Methods
 
     private func callGeminiAPI(prompt: String, apiKey: String) async throws -> String {
-        guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
+        guard let url = URL(string: baseURL) else {
             throw GeminiError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         request.timeoutInterval = timeout
 
         let requestBody: [String: Any] = [
@@ -179,7 +180,7 @@ enum GeminiError: Error {
                 break
             }
             if let body = body {
-                print("[GeminiService] Response body: \(body)")
+                Logger.logGemini("Response body: \(body)", type: .debug)
             }
             return message
         case .parseError:
