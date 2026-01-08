@@ -4,10 +4,11 @@ import ServiceManagement
 
 struct SettingsView: View {
     @State private var apiKey: String = ""
-    @State private var aiNamingEnabled: Bool = UserDefaults.standard.bool(forKey: "aiNamingEnabled")
+    @State private var aiNamingEnabled: Bool = AIServiceFactory.shared.isAINamingEnabled
     @State private var isTestingConnection: Bool = false
     @State private var connectionTestResult: ConnectionTestResult?
-    @State private var hasStoredKey: Bool = KeychainService.hasAPIKey()
+    @State private var selectedProvider: AIProvider = AIServiceFactory.shared.selectedProvider
+    @State private var hasStoredKey: Bool = false
     @State private var launchAtLogin: Bool = false
 
     var body: some View {
@@ -24,10 +25,10 @@ struct SettingsView: View {
                     Label("AI Naming", systemImage: "sparkles")
                 }
         }
-        .frame(width: 450, height: 320)
+        .frame(width: 500, height: 400)
         .onAppear {
             // Load masked key indicator (don't load actual key for security)
-            hasStoredKey = KeychainService.hasAPIKey()
+            hasStoredKey = KeychainService.hasAPIKey(for: selectedProvider)
         }
     }
 
@@ -105,10 +106,35 @@ struct SettingsView: View {
 
                     Toggle("Enable AI-generated prompt names", isOn: $aiNamingEnabled)
                         .onChange(of: aiNamingEnabled) { newValue in
-                            UserDefaults.standard.set(newValue, forKey: "aiNamingEnabled")
+                            AIServiceFactory.shared.isAINamingEnabled = newValue
                         }
 
-                    Text("When enabled, Gemini AI will generate descriptive names for your prompts instead of timestamps.")
+                    Text("When enabled, AI will generate descriptive names for your prompts instead of timestamps.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Divider()
+
+                // AI Provider Selection
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("AI Provider")
+                        .font(.headline)
+
+                    Picker("Provider", selection: $selectedProvider) {
+                        ForEach(AIProvider.allCases, id: \.id) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedProvider) { newProvider in
+                        AIServiceFactory.shared.selectedProvider = newProvider
+                        hasStoredKey = KeychainService.hasAPIKey(for: newProvider)
+                        apiKey = ""
+                        connectionTestResult = nil
+                    }
+
+                    Text("Choose which AI service to use for generating prompt names.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -117,7 +143,7 @@ struct SettingsView: View {
 
                 // API Key Section
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Gemini API Key")
+                    Text("\(selectedProvider.displayName) API Key")
                         .font(.headline)
 
                     if hasStoredKey {
@@ -133,7 +159,7 @@ struct SettingsView: View {
                             .buttonStyle(.borderless)
                         }
                     } else {
-                        SecureField("Enter your Gemini API key", text: $apiKey)
+                        SecureField("Enter your \(selectedProvider.displayName) API key", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
 
                         HStack {
@@ -145,7 +171,7 @@ struct SettingsView: View {
                             if !apiKey.isEmpty {
                                 Button("Cancel") {
                                     apiKey = ""
-                                    hasStoredKey = KeychainService.hasAPIKey()
+                                    hasStoredKey = KeychainService.hasAPIKey(for: selectedProvider)
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -172,7 +198,7 @@ struct SettingsView: View {
                         }
                     }
 
-                    Link("Get a Gemini API key", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                    Link("Get a \(selectedProvider.displayName) API key", destination: URL(string: selectedProvider.apiKeyURL)!)
                         .font(.caption)
 
                     Text("Your API key is stored securely in the macOS Keychain.")
@@ -191,7 +217,7 @@ struct SettingsView: View {
     private func saveAPIKey() {
         guard !apiKey.isEmpty else { return }
 
-        if KeychainService.saveAPIKey(apiKey) {
+        if KeychainService.saveAPIKey(apiKey, for: selectedProvider) {
             hasStoredKey = true
             apiKey = ""
             connectionTestResult = ConnectionTestResult(isSuccess: true, message: "Key saved")
@@ -203,7 +229,7 @@ struct SettingsView: View {
     private func testConnection() {
         // If entering a new key, save it first temporarily
         if !apiKey.isEmpty {
-            KeychainService.saveAPIKey(apiKey)
+            KeychainService.saveAPIKey(apiKey, for: selectedProvider)
             hasStoredKey = true
             apiKey = ""
         }
@@ -212,7 +238,8 @@ struct SettingsView: View {
         connectionTestResult = nil
 
         Task {
-            let result = await GeminiService.shared.testConnection()
+            let service = AIServiceFactory.shared.getService(for: selectedProvider)
+            let result = await service.testConnection()
 
             await MainActor.run {
                 isTestingConnection = false

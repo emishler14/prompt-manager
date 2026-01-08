@@ -130,8 +130,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Save with AI Naming
 
     private func saveTextAsPrompt(_ text: String) {
-        let aiNamingEnabled = UserDefaults.standard.bool(forKey: "aiNamingEnabled")
-        let hasAPIKey = KeychainService.hasAPIKey()
+        let aiNamingEnabled = AIServiceFactory.shared.isAINamingEnabled
+        let hasAPIKey = AIServiceFactory.shared.hasAPIKey()
 
         Logger.logApp("Saving prompt - AI naming: \(aiNamingEnabled), Has API key: \(hasAPIKey)")
 
@@ -149,8 +149,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Use AI to generate name
         Task {
+            let aiService = AIServiceFactory.shared.getCurrentService()
             let name: String
-            if let aiName = await GeminiService.shared.generateName(for: text) {
+            if let aiName = await aiService.generateName(for: text) {
                 Logger.logApp("AI generated name: \(aiName)")
                 name = aiName
             } else {

@@ -8,10 +8,28 @@ enum Logger {
     // MARK: - Log Categories
 
     private static let accessibility = OSLog(subsystem: subsystem, category: "Accessibility")
-    private static let gemini = OSLog(subsystem: subsystem, category: "GeminiAPI")
+    private static let ai = OSLog(subsystem: subsystem, category: "AI")
     private static let storage = OSLog(subsystem: subsystem, category: "Storage")
     private static let backgroundRename = OSLog(subsystem: subsystem, category: "BackgroundRename")
     private static let app = OSLog(subsystem: subsystem, category: "App")
+
+    enum LogCategory {
+        case accessibility
+        case ai
+        case storage
+        case backgroundRename
+        case app
+
+        fileprivate var osLog: OSLog {
+            switch self {
+            case .accessibility: return Logger.accessibility
+            case .ai: return Logger.ai
+            case .storage: return Logger.storage
+            case .backgroundRename: return Logger.backgroundRename
+            case .app: return Logger.app
+            }
+        }
+    }
 
     // MARK: - Logging Methods
 
@@ -48,5 +66,22 @@ enum Logger {
         } else {
             os_log("%{public}@", log: log, type: .error, message)
         }
+    }
+
+    // MARK: - Generic Logging Methods
+
+    /// Log informational message
+    static func logInfo(_ message: String, category: LogCategory = .app) {
+        os_log("%{public}@", log: category.osLog, type: .info, message)
+    }
+
+    /// Log error message
+    static func logError(_ message: String, category: LogCategory = .app) {
+        os_log("%{public}@", log: category.osLog, type: .error, message)
+    }
+
+    /// Log debug message
+    static func logDebug(_ message: String, category: LogCategory = .app) {
+        os_log("%{public}@", log: category.osLog, type: .debug, message)
     }
 }

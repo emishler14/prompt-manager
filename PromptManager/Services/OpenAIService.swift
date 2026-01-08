@@ -1,23 +1,24 @@
 import Foundation
 
-/// Service for generating prompt names using Google's Gemini API
-class GeminiService: AINameGeneratorService {
-    static let shared = GeminiService()
+/// Service for generating prompt names using OpenAI's GPT API
+class OpenAIService: AINameGeneratorService {
+    static let shared = OpenAIService()
 
-    let provider: AIProvider = .google
-    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
+    let provider: AIProvider = .openai
+    private let baseURL = "https://api.openai.com/v1/chat/completions"
     private let timeout: TimeInterval = 15.0
+    private let model = "gpt-4o-mini"
 
     private init() {}
 
-    // MARK: - Public API
+    // MARK: - AINameGeneratorService Protocol
 
-    /// Generate a concise name for a prompt using Gemini AI
+    /// Generate a concise name for a prompt using OpenAI GPT
     /// - Parameter content: The prompt content to name
     /// - Returns: A generated name (3-6 words) or nil if failed
     func generateName(for content: String) async -> String? {
         guard let apiKey = KeychainService.getAPIKey(for: provider), !apiKey.isEmpty else {
-            Logger.logInfo("No Google API key found - falling back to timestamp", category: .ai)
+            Logger.logInfo("No OpenAI API key found - falling back to timestamp", category: .ai)
             return nil
         }
 
@@ -33,12 +34,12 @@ class GeminiService: AINameGeneratorService {
         """
 
         do {
-            let response = try await callGeminiAPI(prompt: prompt, apiKey: apiKey)
+            let response = try await callOpenAIAPI(prompt: prompt, apiKey: apiKey)
             let name = cleanGeneratedName(response)
             Logger.logInfo("Generated name: \(name)", category: .ai)
             return name
-        } catch let error as GeminiError {
-            Logger.logError("API error: \(error.localizedDescription)", category: .ai)
+        } catch let error as AIServiceError {
+            Logger.logError("OpenAI API error: \(error.localizedDescription)", category: .ai)
             return nil
         } catch {
             Logger.logError("Unexpected error: \(error.localizedDescription)", category: .ai)
@@ -54,10 +55,10 @@ class GeminiService: AINameGeneratorService {
         }
 
         do {
-            let _ = try await callGeminiAPI(prompt: "Say 'OK' if you can read this.", apiKey: apiKey)
+            let _ = try await callOpenAIAPI(prompt: "Say 'OK' if you can read this.", apiKey: apiKey)
             return (true, "Connected!")
-        } catch let error as GeminiError {
-            return (false, error.localizedDescription)
+        } catch let error as AIServiceError {
+            return (false, error.localizedDescription ?? "Unknown error")
         } catch let urlError as URLError {
             switch urlError.code {
             case .notConnectedToInternet:
@@ -74,28 +75,26 @@ class GeminiService: AINameGeneratorService {
 
     // MARK: - Private Methods
 
-    private func callGeminiAPI(prompt: String, apiKey: String) async throws -> String {
+    private func callOpenAIAPI(prompt: String, apiKey: String) async throws -> String {
         guard let url = URL(string: baseURL) else {
-            throw GeminiError.invalidURL
+            throw AIServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = timeout
 
         let requestBody: [String: Any] = [
-            "contents": [
+            "model": model,
+            "max_tokens": 50,
+            "temperature": 0.7,
+            "messages": [
                 [
-                    "parts": [
-                        ["text": prompt]
-                    ]
+                    "role": "user",
+                    "content": prompt
                 ]
-            ],
-            "generationConfig": [
-                "temperature": 0.7,
-                "maxOutputTokens": 50
             ]
         ]
 
@@ -104,26 +103,33 @@ class GeminiService: AINameGeneratorService {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw GeminiError.invalidResponse
+            throw AIServiceError.invalidResponse
         }
 
         guard httpResponse.statusCode == 200 else {
             let bodyString = String(data: data, encoding: .utf8)
-            throw GeminiError.apiError(statusCode: httpResponse.statusCode, body: bodyString)
+            Logger.logDebug("OpenAI API error response: \(bodyString ?? "no body")", category: .ai)
+
+            switch httpResponse.statusCode {
+            case 401:
+                throw AIServiceError.unauthorized
+            case 429:
+                throw AIServiceError.rateLimited
+            default:
+                throw AIServiceError.serverError(statusCode: httpResponse.statusCode)
+            }
         }
 
         // Parse the response
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let candidates = json["candidates"] as? [[String: Any]],
-              let firstCandidate = candidates.first,
-              let content = firstCandidate["content"] as? [String: Any],
-              let parts = content["parts"] as? [[String: Any]],
-              let firstPart = parts.first,
-              let text = firstPart["text"] as? String else {
-            throw GeminiError.parseError
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw AIServiceError.parseError
         }
 
-        return text
+        return content
     }
 
     private func cleanGeneratedName(_ rawName: String) -> String {
@@ -147,45 +153,5 @@ class GeminiService: AINameGeneratorService {
         name = name.capitalized
 
         return name.isEmpty ? "Untitled Prompt" : name
-    }
-}
-
-// MARK: - Error Types
-
-enum GeminiError: Error {
-    case invalidURL
-    case invalidResponse
-    case apiError(statusCode: Int, body: String?)
-    case parseError
-
-    var localizedDescription: String {
-        switch self {
-        case .invalidURL:
-            return "Invalid API URL"
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .apiError(let statusCode, let body):
-            var message = "API error (status \(statusCode))"
-            switch statusCode {
-            case 400:
-                message = "Bad request - check API key format"
-            case 401:
-                message = "Invalid API key"
-            case 403:
-                message = "API key doesn't have permission"
-            case 429:
-                message = "Rate limited - too many requests"
-            case 500...599:
-                message = "Gemini server error (\(statusCode))"
-            default:
-                break
-            }
-            if let body = body {
-                Logger.logDebug("Response body: \(body)", category: .ai)
-            }
-            return message
-        case .parseError:
-            return "Failed to parse API response"
-        }
     }
 }
