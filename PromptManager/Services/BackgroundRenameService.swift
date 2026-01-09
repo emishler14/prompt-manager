@@ -49,14 +49,14 @@ class BackgroundRenameService {
         }
 
         // Check if AI naming is enabled
-        guard UserDefaults.standard.bool(forKey: "aiNamingEnabled") else {
+        guard AIServiceFactory.shared.isAINamingEnabled else {
             Logger.logBackgroundRename("AI naming is disabled, skipping")
             return
         }
 
-        // Check if we have an API key
-        guard KeychainService.hasAPIKey() else {
-            Logger.logBackgroundRename("No API key, skipping")
+        // Check if we have an API key for the selected provider
+        guard AIServiceFactory.shared.hasAPIKey() else {
+            Logger.logBackgroundRename("No API key configured for selected provider, skipping")
             return
         }
 
@@ -94,6 +94,8 @@ class BackgroundRenameService {
         var successCount = 0
         var failCount = 0
 
+        let aiService = AIServiceFactory.shared.getCurrentService()
+
         for prompt in prompts {
             // Check we're still connected before each request
             guard NetworkMonitor.shared.isConnected else {
@@ -103,7 +105,7 @@ class BackgroundRenameService {
 
             Logger.logBackgroundRename("Renaming: \(prompt.name)")
 
-            if let newName = await GeminiService.shared.generateName(for: prompt.content) {
+            if let newName = await aiService.generateName(for: prompt.content) {
                 await MainActor.run {
                     var updatedPrompt = prompt
                     updatedPrompt.name = newName

@@ -4,24 +4,25 @@ import Security
 /// Service for securely storing and retrieving API keys from the macOS Keychain
 enum KeychainService {
     private static let service = "com.promptmanager.app"
-    private static let apiKeyAccount = "gemini-api-key"
 
     // MARK: - API Key Operations
 
-    /// Save the Gemini API key to the Keychain
-    /// - Parameter key: The API key to store
+    /// Save an API key to the Keychain for a specific provider
+    /// - Parameters:
+    ///   - key: The API key to store
+    ///   - provider: The AI provider this key is for
     /// - Returns: True if successful, false otherwise
     @discardableResult
-    static func saveAPIKey(_ key: String) -> Bool {
+    static func saveAPIKey(_ key: String, for provider: AIProvider) -> Bool {
         // Delete any existing key first
-        deleteAPIKey()
+        deleteAPIKey(for: provider)
 
         guard let data = key.data(using: .utf8) else { return false }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount,
+            kSecAttrAccount as String: provider.keychainAccount,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
         ]
@@ -30,13 +31,14 @@ enum KeychainService {
         return status == errSecSuccess
     }
 
-    /// Retrieve the Gemini API key from the Keychain
+    /// Retrieve an API key from the Keychain for a specific provider
+    /// - Parameter provider: The AI provider to get the key for
     /// - Returns: The API key if found, nil otherwise
-    static func getAPIKey() -> String? {
+    static func getAPIKey(for provider: AIProvider) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount,
+            kSecAttrAccount as String: provider.keychainAccount,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -53,23 +55,66 @@ enum KeychainService {
         return key
     }
 
-    /// Delete the Gemini API key from the Keychain
+    /// Delete an API key from the Keychain for a specific provider
+    /// - Parameter provider: The AI provider to delete the key for
     /// - Returns: True if successful or key didn't exist, false on error
     @discardableResult
-    static func deleteAPIKey() -> Bool {
+    static func deleteAPIKey(for provider: AIProvider) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount
+            kSecAttrAccount as String: provider.keychainAccount
         ]
 
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }
 
-    /// Check if an API key is stored
+    /// Check if an API key is stored for a specific provider
+    /// - Parameter provider: The AI provider to check for
     /// - Returns: True if a key exists in the Keychain
-    static func hasAPIKey() -> Bool {
-        return getAPIKey() != nil
+    static func hasAPIKey(for provider: AIProvider) -> Bool {
+        return getAPIKey(for: provider) != nil
+    }
+
+    // MARK: - Legacy Support (for migration)
+
+    /// Get the legacy Gemini API key (for migration purposes)
+    static func getLegacyGeminiAPIKey() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "gemini-api-key",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        return key
+    }
+
+    /// Migrate legacy Gemini API key to new format
+    static func migrateLegacyGeminiKey() {
+        if let legacyKey = getLegacyGeminiAPIKey() {
+            saveAPIKey(legacyKey, for: .google)
+
+            // Delete the legacy key
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: "gemini-api-key"
+            ]
+            SecItemDelete(query as CFDictionary)
+
+            Logger.logInfo("Migrated legacy Gemini API key to new format", category: .ai)
+        }
     }
 }
