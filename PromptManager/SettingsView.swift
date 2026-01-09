@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var selectedProvider: AIProvider = AIServiceFactory.shared.selectedProvider
     @State private var hasStoredKey: Bool = false
     @State private var launchAtLogin: Bool = false
+    @State private var isRenamingPrompts: Bool = false
+    @State private var renameResult: String?
 
     var body: some View {
         TabView {
@@ -206,6 +208,45 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
 
+                Divider()
+
+                // Rename All Prompts Section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rename Timestamped Prompts")
+                        .font(.headline)
+
+                    Text("Rename all prompts that still have the default timestamp name (e.g., \"Prompt - Jan 7, 2026 at 10:50 AM\").")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    HStack {
+                        Button("Rename All Now") {
+                            triggerRenameAll()
+                        }
+                        .disabled(isRenamingPrompts || !hasStoredKey)
+
+                        if isRenamingPrompts {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Renaming...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        if let result = renameResult {
+                            Text(result)
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
+
+                    if !hasStoredKey {
+                        Text("Configure an API key above to enable renaming.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
                 Spacer()
             }
             .padding()
@@ -247,6 +288,22 @@ struct SettingsView: View {
                     isSuccess: result.success,
                     message: result.message
                 )
+            }
+        }
+    }
+
+    private func triggerRenameAll() {
+        isRenamingPrompts = true
+        renameResult = nil
+
+        BackgroundRenameService.shared.renameAllTimestampedPrompts { success, fail in
+            isRenamingPrompts = false
+            if success == 0 && fail == 0 {
+                renameResult = "No prompts needed renaming"
+            } else if fail == 0 {
+                renameResult = "Renamed \(success) prompt\(success == 1 ? "" : "s")"
+            } else {
+                renameResult = "Renamed \(success), \(fail) failed"
             }
         }
     }

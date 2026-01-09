@@ -7,16 +7,13 @@ struct SearchPanelView: View {
 
     @State private var searchText = ""
     @State private var selectedIndex = 0
+    @State private var scoredPrompts: [ScoredPrompt] = []
+    @State private var isAISearching = false
+    @State private var aiSearchTask: Task<Void, Never>?
+    @State private var lastAISearchQuery = ""
 
     private var filteredPrompts: [Prompt] {
-        if searchText.isEmpty {
-            return promptStore.prompts
-        }
-        let lowercased = searchText.lowercased()
-        return promptStore.prompts.filter {
-            $0.name.lowercased().contains(lowercased) ||
-            $0.content.lowercased().contains(lowercased)
-        }
+        scoredPrompts.map { $0.prompt }
     }
 
     var body: some View {
@@ -68,8 +65,82 @@ struct SearchPanelView: View {
         }
         .frame(width: 600, height: 400)
         .background(Color.clear)
-        .onChange(of: searchText) { _ in
+        .onAppear {
+            performLocalSearch()
+        }
+        .onChange(of: searchText) { newValue in
             selectedIndex = 0
+            performLocalSearch()
+            scheduleAISearch(query: newValue)
+        }
+        .onChange(of: promptStore.prompts) { _ in
+            performLocalSearch()
+        }
+    }
+
+    // MARK: - Search Methods
+
+    private func performLocalSearch() {
+        scoredPrompts = SearchService.shared.searchLocal(query: searchText, in: promptStore.prompts)
+    }
+
+    private func scheduleAISearch(query: String) {
+        // Cancel any pending AI search
+        aiSearchTask?.cancel()
+
+        // Don't AI search for very short queries or empty
+        guard query.count >= 2 else {
+            isAISearching = false
+            return
+        }
+
+        // Don't re-run AI search for same query
+        guard query != lastAISearchQuery else { return }
+
+        // Check if AI is available
+        guard AIServiceFactory.shared.hasAPIKey() else { return }
+
+        // Skip AI search if we have a strong local match (exact or near-exact name match)
+        // Score > 1000 means name contains the query phrase exactly
+        if let topScore = scoredPrompts.first?.score, topScore >= 1000 {
+            return
+        }
+
+        // Debounce: wait 600ms after user stops typing
+        aiSearchTask = Task {
+            try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
+
+            guard !Task.isCancelled else { return }
+
+            // Re-check if we now have a strong local match (user may have typed more)
+            let currentTopScore = await MainActor.run { scoredPrompts.first?.score ?? 0 }
+            if currentTopScore >= 1000 {
+                return
+            }
+
+            await MainActor.run {
+                isAISearching = true
+            }
+
+            // Pass the local results to AI, not all prompts
+            let localResults = await MainActor.run { scoredPrompts.map { $0.prompt } }
+
+            if let aiResults = await SearchService.shared.searchWithAI(query: query, in: localResults) {
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    // Only update if query hasn't changed
+                    if searchText == query {
+                        scoredPrompts = aiResults
+                        lastAISearchQuery = query
+                    }
+                    isAISearching = false
+                }
+            } else {
+                await MainActor.run {
+                    isAISearching = false
+                }
+            }
         }
     }
 
@@ -105,6 +176,22 @@ struct SearchPanelView: View {
                 Text("close")
             }
             Spacer()
+
+            if isAISearching {
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("AI ranking...")
+                }
+            } else if !searchText.isEmpty && lastAISearchQuery == searchText {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.caption2)
+                    Text("AI ranked")
+                }
+                .foregroundColor(.accentColor)
+            }
+
             Text("\(filteredPrompts.count) prompt\(filteredPrompts.count == 1 ? "" : "s")")
         }
         .font(.caption)

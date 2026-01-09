@@ -26,6 +26,12 @@
 		A1000600A1000600A1000600 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000601A1000601A1000601 /* ToastView.swift */; };
 		A1000700A1000700A1000700 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000701A1000701A1000701 /* NetworkMonitor.swift */; };
 		A1000702A1000702A1000702 /* BackgroundRenameService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000703A1000703A1000703 /* BackgroundRenameService.swift */; };
+		A1000810A1000810A1000810 /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000800A1000800A1000800 /* AIProvider.swift */; };
+		A1000811A1000811A1000811 /* AIServiceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000801A1000801A1000801 /* AIServiceFactory.swift */; };
+		A1000812A1000812A1000812 /* AnthropicService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000802A1000802A1000802 /* AnthropicService.swift */; };
+		A1000813A1000813A1000813 /* OpenAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000803A1000803A1000803 /* OpenAIService.swift */; };
+		A1000814A1000814A1000814 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000804A1000804A1000804 /* Logger.swift */; };
+		A1000820A1000820A1000820 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000805A1000805A1000805 /* SearchService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +55,12 @@
 		A1000601A1000601A1000601 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		A1000701A1000701A1000701 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		A1000703A1000703A1000703 /* BackgroundRenameService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRenameService.swift; sourceTree = "<group>"; };
+		A1000800A1000800A1000800 /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
+		A1000801A1000801A1000801 /* AIServiceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceFactory.swift; sourceTree = "<group>"; };
+		A1000802A1000802A1000802 /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
+		A1000803A1000803A1000803 /* OpenAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIService.swift; sourceTree = "<group>"; };
+		A1000804A1000804A1000804 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		A1000805A1000805A1000805 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,11 +113,17 @@
 			isa = PBXGroup;
 			children = (
 				A1000201A1000201A1000201 /* AccessibilityService.swift */,
+				A1000800A1000800A1000800 /* AIProvider.swift */,
+				A1000801A1000801A1000801 /* AIServiceFactory.swift */,
+				A1000802A1000802A1000802 /* AnthropicService.swift */,
 				A1000403A1000403A1000403 /* PasteService.swift */,
 				A1000501A1000501A1000501 /* KeychainService.swift */,
 				A1000503A1000503A1000503 /* GeminiService.swift */,
+				A1000804A1000804A1000804 /* Logger.swift */,
 				A1000701A1000701A1000701 /* NetworkMonitor.swift */,
 				A1000703A1000703A1000703 /* BackgroundRenameService.swift */,
+				A1000803A1000803A1000803 /* OpenAIService.swift */,
+				A1000805A1000805A1000805 /* SearchService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -213,6 +231,12 @@
 				A1000600A1000600A1000600 /* ToastView.swift in Sources */,
 				A1000700A1000700A1000700 /* NetworkMonitor.swift in Sources */,
 				A1000702A1000702A1000702 /* BackgroundRenameService.swift in Sources */,
+				A1000810A1000810A1000810 /* AIProvider.swift in Sources */,
+				A1000811A1000811A1000811 /* AIServiceFactory.swift in Sources */,
+				A1000812A1000812A1000812 /* AnthropicService.swift in Sources */,
+				A1000813A1000813A1000813 /* OpenAIService.swift in Sources */,
+				A1000814A1000814A1000814 /* Logger.swift in Sources */,
+				A1000820A1000820A1000820 /* SearchService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

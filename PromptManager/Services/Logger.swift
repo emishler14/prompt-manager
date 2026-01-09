@@ -38,9 +38,9 @@ enum Logger {
         os_log("%{public}@", log: accessibility, type: type, message)
     }
 
-    /// Log Gemini API events
-    static func logGemini(_ message: String, type: OSLogType = .debug) {
-        os_log("%{public}@", log: gemini, type: type, message)
+    /// Log AI API events (Gemini, OpenAI, Anthropic)
+    static func logAI(_ message: String, type: OSLogType = .debug) {
+        os_log("%{public}@", log: ai, type: type, message)
     }
 
     /// Log storage operations

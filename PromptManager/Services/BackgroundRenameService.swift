@@ -90,7 +90,61 @@ class BackgroundRenameService {
         }
     }
 
+    /// Manually rename all timestamped prompts (called from Settings)
+    /// - Parameter completion: Called with (successCount, failCount) when done
+    func renameAllTimestampedPrompts(completion: @escaping (Int, Int) -> Void) {
+        guard !isProcessing else {
+            Logger.logBackgroundRename("Already processing, skipping manual rename")
+            completion(0, 0)
+            return
+        }
+
+        // Check if we have an API key for the selected provider
+        guard AIServiceFactory.shared.hasAPIKey() else {
+            Logger.logBackgroundRename("No API key configured for selected provider")
+            completion(0, 0)
+            return
+        }
+
+        // Check if we're connected
+        guard NetworkMonitor.shared.isConnected else {
+            Logger.logBackgroundRename("No network connection")
+            completion(0, 0)
+            return
+        }
+
+        guard let store = promptStore else {
+            Logger.logBackgroundRename("No prompt store available")
+            completion(0, 0)
+            return
+        }
+
+        // Find prompts needing rename
+        let promptsToRename = store.prompts.filter { $0.hasTimestampName }
+
+        guard !promptsToRename.isEmpty else {
+            Logger.logBackgroundRename("No prompts need renaming")
+            completion(0, 0)
+            return
+        }
+
+        Logger.logBackgroundRename("Manual rename: Found \(promptsToRename.count) prompts to rename")
+        isProcessing = true
+
+        Task {
+            let (success, fail) = await renamePromptsWithCount(promptsToRename, store: store)
+            await MainActor.run {
+                isProcessing = false
+                completion(success, fail)
+            }
+        }
+    }
+
     private func renamePrompts(_ prompts: [Prompt], store: PromptStore) async {
+        _ = await renamePromptsWithCount(prompts, store: store)
+    }
+
+    private func renamePromptsWithCount(_ prompts: [Prompt], store: PromptStore) async -> (Int, Int) {
         var successCount = 0
         var failCount = 0
 
@@ -123,5 +177,6 @@ class BackgroundRenameService {
         }
 
         Logger.logBackgroundRename("Complete - \(successCount) renamed, \(failCount) failed")
+        return (successCount, failCount)
     }
 }
