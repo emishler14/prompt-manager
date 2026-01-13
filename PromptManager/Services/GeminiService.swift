@@ -40,6 +40,18 @@ class GeminiService: AINameGeneratorService {
         } catch let error as GeminiError {
             Logger.logError("API error: \(error.localizedDescription)", category: .ai)
             return nil
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                Logger.logError("No internet connection - falling back to timestamp", category: .ai)
+            case .timedOut:
+                Logger.logError("Request timed out - falling back to timestamp", category: .ai)
+            case .networkConnectionLost:
+                Logger.logError("Network connection lost - falling back to timestamp", category: .ai)
+            default:
+                Logger.logError("Network error: \(urlError.localizedDescription)", category: .ai)
+            }
+            return nil
         } catch {
             Logger.logError("Unexpected error: \(error.localizedDescription)", category: .ai)
             return nil

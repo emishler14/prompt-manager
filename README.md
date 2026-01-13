@@ -12,8 +12,9 @@ A native macOS menu bar application for saving, organizing, and quickly accessin
 - **Global Keyboard Shortcut** - Press `Cmd+Shift+P` (customizable) to:
   - Save selected text as a new prompt
   - Search and paste existing prompts
-- **AI-Powered Naming** - Automatically generate descriptive names using Google Gemini API
-- **Spotlight-like Search** - Fast, keyboard-driven prompt search
+- **AI-Powered Naming** - Automatically generate descriptive names using your choice of AI provider (Anthropic Claude, OpenAI GPT, or Google Gemini)
+- **AI-Powered Search** - Semantic search ranking that understands intent, not just keywords
+- **Spotlight-like Search** - Fast, keyboard-driven prompt search with fuzzy matching
 - **Auto-Paste** - Automatically paste selected prompts into the previous app
 - **Export/Import** - Backup and restore your prompts
 - **Launch at Login** - Optional auto-start
@@ -80,13 +81,16 @@ To enable:
 
 To enable AI-powered prompt naming:
 
-1. Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Open **Settings > AI Naming**
-3. Enable "AI-generated prompt names"
+1. Open **Settings > AI Naming**
+2. Enable "AI-generated prompt names"
+3. Select your preferred AI provider:
+   - **Anthropic (Claude)** - Get API key from [Anthropic Console](https://console.anthropic.com/settings/keys)
+   - **OpenAI (GPT)** - Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   - **Google (Gemini)** - Get API key from [Google AI Studio](https://aistudio.google.com/apikey)
 4. Paste your API key and click "Save Key"
 5. Click "Test Connection" to verify
 
-Your API key is stored securely in the macOS Keychain.
+Your API key is stored securely in the macOS Keychain. You can switch providers at any time.
 
 ## Configuration
 
@@ -105,26 +109,31 @@ Prompts are stored at:
 
 ```
 PromptManager/
-├── PromptManagerApp.swift    # App entry point
+├── PromptManagerApp.swift    # App entry point & AppDelegate
 ├── MainWindowView.swift      # Main management UI
 ├── MenuBarView.swift         # Menu bar popover
-├── SettingsView.swift        # Settings window
+├── SettingsView.swift        # Settings window (General & AI tabs)
 ├── Prompt.swift              # Data model
 ├── PromptStore.swift         # State management & persistence
 ├── Constants.swift           # Keyboard shortcut constants
 ├── Services/
-│   ├── AccessibilityService.swift   # Text capture
-│   ├── GeminiService.swift          # AI naming
-│   ├── KeychainService.swift        # Secure storage
-│   ├── PasteService.swift           # Auto-paste
-│   ├── BackgroundRenameService.swift # Async renaming
-│   ├── NetworkMonitor.swift         # Connectivity
-│   └── Logger.swift                 # Logging utility
+│   ├── AccessibilityService.swift    # Text capture from other apps
+│   ├── AIProvider.swift              # AI provider enum & protocol
+│   ├── AIServiceFactory.swift        # AI service selection & management
+│   ├── AnthropicService.swift        # Claude API integration
+│   ├── OpenAIService.swift           # GPT API integration
+│   ├── GeminiService.swift           # Gemini API integration
+│   ├── SearchService.swift           # Local fuzzy + AI semantic search
+│   ├── KeychainService.swift         # Secure API key storage
+│   ├── PasteService.swift            # Auto-paste to previous app
+│   ├── BackgroundRenameService.swift # Async prompt renaming
+│   ├── NetworkMonitor.swift          # Connectivity monitoring
+│   └── Logger.swift                  # Logging utility
 └── Views/
-    ├── SearchPanelView.swift        # Spotlight-like search
-    ├── FloatingPanel.swift          # Floating window
-    ├── ToastView.swift              # Notifications
-    └── OnboardingView.swift         # First-run setup
+    ├── SearchPanelView.swift         # Spotlight-like search UI
+    ├── FloatingPanel.swift           # Floating window container
+    ├── ToastView.swift               # Toast notifications
+    └── OnboardingView.swift          # First-run setup
 ```
 
 ## Contributing
@@ -149,7 +158,9 @@ Contributions are welcome! Please:
 - All data is stored locally on your Mac
 - No telemetry or analytics
 - API keys are stored in your macOS Keychain
-- Prompt content is only sent to Gemini API if AI naming is enabled (for name generation only)
+- Prompt content is only sent to your selected AI provider (Anthropic, OpenAI, or Google) when AI features are enabled:
+  - AI naming: first 500 characters sent for name generation
+  - AI search: prompt names and first 100 characters sent for semantic ranking
 
 ## License
 

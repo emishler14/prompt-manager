@@ -41,6 +41,18 @@ class AnthropicService: AINameGeneratorService {
         } catch let error as AIServiceError {
             Logger.logError("Anthropic API error: \(error.localizedDescription)", category: .ai)
             return nil
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                Logger.logError("No internet connection - falling back to timestamp", category: .ai)
+            case .timedOut:
+                Logger.logError("Request timed out - falling back to timestamp", category: .ai)
+            case .networkConnectionLost:
+                Logger.logError("Network connection lost - falling back to timestamp", category: .ai)
+            default:
+                Logger.logError("Network error: \(urlError.localizedDescription)", category: .ai)
+            }
+            return nil
         } catch {
             Logger.logError("Unexpected error: \(error.localizedDescription)", category: .ai)
             return nil
@@ -58,7 +70,7 @@ class AnthropicService: AINameGeneratorService {
             let _ = try await callAnthropicAPI(prompt: "Say 'OK' if you can read this.", apiKey: apiKey)
             return (true, "Connected!")
         } catch let error as AIServiceError {
-            return (false, error.localizedDescription ?? "Unknown error")
+            return (false, error.localizedDescription)
         } catch let urlError as URLError {
             switch urlError.code {
             case .notConnectedToInternet:

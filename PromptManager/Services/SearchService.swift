@@ -241,6 +241,18 @@ class SearchService {
             case .anthropic:
                 return try await callAnthropicForSearch(prompt: prompt, apiKey: apiKey)
             }
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                Logger.logError("AI search: No internet connection", category: .ai)
+            case .timedOut:
+                Logger.logError("AI search: Request timed out", category: .ai)
+            case .networkConnectionLost:
+                Logger.logError("AI search: Network connection lost", category: .ai)
+            default:
+                Logger.logError("AI search network error: \(urlError.localizedDescription)", category: .ai)
+            }
+            return nil
         } catch {
             Logger.logError("AI search error: \(error.localizedDescription)", category: .ai)
             return nil

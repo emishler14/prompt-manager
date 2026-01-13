@@ -11,7 +11,10 @@ class PromptStore: ObservableObject {
 
     init() {
         // ~/Library/Application Support/PromptManager/prompts.json
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        // Note: .applicationSupportDirectory is guaranteed to exist on macOS, but we use guard for defensive coding
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            fatalError("Application Support directory not found - this should never happen on macOS")
+        }
         let appFolder = appSupport.appendingPathComponent("PromptManager", isDirectory: true)
 
         // Create directory if needed

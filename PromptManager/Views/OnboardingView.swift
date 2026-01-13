@@ -31,9 +31,9 @@ struct OnboardingView: View {
                     .font(.headline)
 
                 InstructionRow(number: 1, text: "Click \"Open System Settings\" below")
-                InstructionRow(number: 2, text: "Find Prompt Manager in the list")
+                InstructionRow(number: 2, text: "Find Prompt Manager in the list (or click + to add it)")
                 InstructionRow(number: 3, text: "Toggle the switch to enable access")
-                InstructionRow(number: 4, text: "Return here and click Continue")
+                InstructionRow(number: 4, text: "This window will update automatically")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
