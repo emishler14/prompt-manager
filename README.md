@@ -40,6 +40,25 @@ A native macOS menu bar application for saving, organizing, and quickly accessin
 
 3. Build and run (`Cmd+R`)
 
+## Distribution
+
+Want to package this app for others to download and use?
+
+**Quick Start:**
+```bash
+./build_release.sh
+```
+
+This creates a ready-to-distribute `.dmg` and `.zip` in the `release/` folder.
+
+**Documentation:**
+- **[Quick Start Guide](QUICK_START_DISTRIBUTION.md)** - Fast path to distribution
+- **[Complete Distribution Guide](DISTRIBUTION_GUIDE.md)** - Detailed instructions including notarization
+
+**Options:**
+- **Free Distribution**: Users right-click → Open on first launch
+- **Developer ID ($99/year)**: Seamless double-click experience with notarization
+
 ### First Launch
 
 On first launch, you'll be prompted to grant **Accessibility permissions**. This is required to:

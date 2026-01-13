@@ -67,3 +67,9 @@ fastlane/Preview.html
 
 ## Other
 .DS_Store
+
+## Distribution builds
+build/
+release/
+*.dmg
+*.zip
