@@ -87,15 +87,19 @@ struct MenuBarView: View {
     }
 
     private func openMainWindow() {
+        // Bring app to foreground
         NSApp.activate(ignoringOtherApps: true)
-        // Try to find existing window or create new one
-        if let window = NSApp.windows.first(where: { $0.title == "Prompt Manager" && $0.isVisible == false }) {
+
+        // Find existing Prompt Manager window
+        if let window = NSApp.windows.first(where: { $0.title == "Prompt Manager" }) {
+            // Window exists - bring it to front
             window.makeKeyAndOrderFront(nil)
-        } else if NSApp.windows.filter({ $0.title == "Prompt Manager" }).isEmpty {
-            // No window exists, the WindowGroup will create one when app activates
+            window.orderFrontRegardless()
+        } else {
+            // No window exists - create one
+            // Use openWindow environment action via notification
+            NotificationCenter.default.post(name: NSNotification.Name("OpenMainWindow"), object: nil)
         }
-        // Close the popover
-        NSApp.windows.first(where: { $0.contentView is NSHostingView<MenuBarView> })?.close()
     }
 
     private func copyToClipboard(_ prompt: Prompt) {

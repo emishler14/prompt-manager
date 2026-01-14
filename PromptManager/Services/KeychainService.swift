@@ -2,6 +2,7 @@ import Foundation
 import Security
 
 /// Service for securely storing and retrieving API keys from the macOS Keychain
+/// Uses the Data Protection Keychain which doesn't prompt for password on each access
 enum KeychainService {
     private static let service = "com.promptmanager.app"
 
@@ -24,7 +25,8 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: provider.keychainAccount,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
+            kSecUseDataProtectionKeychain as String: true
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -40,7 +42,8 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: provider.keychainAccount,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseDataProtectionKeychain as String: true
         ]
 
         var result: AnyObject?
@@ -63,7 +66,8 @@ enum KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: provider.keychainAccount
+            kSecAttrAccount as String: provider.keychainAccount,
+            kSecUseDataProtectionKeychain as String: true
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -80,8 +84,29 @@ enum KeychainService {
     // MARK: - Legacy Support (for migration)
 
     /// Get the legacy Gemini API key (for migration purposes)
+    /// Checks both old keychain and data protection keychain
     static func getLegacyGeminiAPIKey() -> String? {
-        let query: [String: Any] = [
+        // Try data protection keychain first
+        let dpQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "gemini-api-key",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseDataProtectionKeychain as String: true
+        ]
+
+        var result: AnyObject?
+        var status = SecItemCopyMatching(dpQuery as CFDictionary, &result)
+
+        if status == errSecSuccess,
+           let data = result as? Data,
+           let key = String(data: data, encoding: .utf8) {
+            return key
+        }
+
+        // Fall back to legacy keychain
+        let legacyQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: "gemini-api-key",
@@ -89,8 +114,8 @@ enum KeychainService {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        result = nil
+        status = SecItemCopyMatching(legacyQuery as CFDictionary, &result)
 
         guard status == errSecSuccess,
               let data = result as? Data,
@@ -106,13 +131,21 @@ enum KeychainService {
         if let legacyKey = getLegacyGeminiAPIKey() {
             saveAPIKey(legacyKey, for: .google)
 
-            // Delete the legacy key
-            let query: [String: Any] = [
+            // Delete the legacy key from both keychains
+            let dpQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: "gemini-api-key",
+                kSecUseDataProtectionKeychain as String: true
+            ]
+            SecItemDelete(dpQuery as CFDictionary)
+
+            let legacyQuery: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
                 kSecAttrAccount as String: "gemini-api-key"
             ]
-            SecItemDelete(query as CFDictionary)
+            SecItemDelete(legacyQuery as CFDictionary)
 
             Logger.logInfo("Migrated legacy Gemini API key to new format", category: .ai)
         }

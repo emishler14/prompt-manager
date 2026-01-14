@@ -70,7 +70,8 @@ To enable:
 
 - Click the menu bar icon to see recent prompts
 - Click "Open Prompt Manager" for the full management interface
-- Edit, delete, or copy prompts from the main window
+- Edit, rename, or delete prompts from the main window
+- Select multiple prompts with Cmd+click or Shift+click for bulk operations
 
 ### Export/Import
 

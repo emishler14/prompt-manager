@@ -1,26 +1,31 @@
 import SwiftUI
 
+/// Observable state for search panel - needed for proper updates in NSHostingView
+class SearchPanelState: ObservableObject {
+    @Published var searchText = ""
+    @Published var selectedIndex = 0
+    @Published var scoredPrompts: [ScoredPrompt] = []
+    @Published var isAISearching = false
+    @Published var lastAISearchQuery = ""
+    var aiSearchTask: Task<Void, Never>?
+}
+
 struct SearchPanelView: View {
     @ObservedObject var promptStore: PromptStore
     var onDismiss: () -> Void
     var onSelectPrompt: (Prompt) -> Void
 
-    @State private var searchText = ""
-    @State private var selectedIndex = 0
-    @State private var scoredPrompts: [ScoredPrompt] = []
-    @State private var isAISearching = false
-    @State private var aiSearchTask: Task<Void, Never>?
-    @State private var lastAISearchQuery = ""
+    @StateObject private var state = SearchPanelState()
 
     private var filteredPrompts: [Prompt] {
-        scoredPrompts.map { $0.prompt }
+        state.scoredPrompts.map { $0.prompt }
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // Search field
             SearchFieldView(
-                text: $searchText,
+                text: $state.searchText,
                 onEscape: onDismiss,
                 onArrowUp: { moveSelection(by: -1) },
                 onArrowDown: { moveSelection(by: 1) },
@@ -36,23 +41,23 @@ struct SearchPanelView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        VStack(spacing: 0) {
                             ForEach(Array(filteredPrompts.enumerated()), id: \.element.id) { index, prompt in
                                 SearchResultRow(
                                     prompt: prompt,
-                                    isSelected: index == selectedIndex,
-                                    searchText: searchText
+                                    isSelected: index == state.selectedIndex,
+                                    searchText: state.searchText
                                 )
                                 .id(index)
                                 .onTapGesture {
-                                    selectedIndex = index
+                                    state.selectedIndex = index
                                     selectCurrentPrompt()
                                 }
                             }
                         }
                         .padding(.vertical, 8)
                     }
-                    .onChange(of: selectedIndex) { newIndex in
+                    .onChange(of: state.selectedIndex) { newIndex in
                         withAnimation(.easeInOut(duration: 0.1)) {
                             proxy.scrollTo(newIndex, anchor: .center)
                         }
@@ -68,8 +73,8 @@ struct SearchPanelView: View {
         .onAppear {
             performLocalSearch()
         }
-        .onChange(of: searchText) { newValue in
-            selectedIndex = 0
+        .onChange(of: state.searchText) { newValue in
+            state.selectedIndex = 0
             performLocalSearch()
             scheduleAISearch(query: newValue)
         }
@@ -81,64 +86,64 @@ struct SearchPanelView: View {
     // MARK: - Search Methods
 
     private func performLocalSearch() {
-        scoredPrompts = SearchService.shared.searchLocal(query: searchText, in: promptStore.prompts)
+        state.scoredPrompts = SearchService.shared.searchLocal(query: state.searchText, in: promptStore.prompts)
     }
 
     private func scheduleAISearch(query: String) {
         // Cancel any pending AI search
-        aiSearchTask?.cancel()
+        state.aiSearchTask?.cancel()
 
         // Don't AI search for very short queries or empty
         guard query.count >= 2 else {
-            isAISearching = false
+            state.isAISearching = false
             return
         }
 
         // Don't re-run AI search for same query
-        guard query != lastAISearchQuery else { return }
+        guard query != state.lastAISearchQuery else { return }
 
         // Check if AI is available
         guard AIServiceFactory.shared.hasAPIKey() else { return }
 
         // Skip AI search if we have a strong local match (exact or near-exact name match)
         // Score > 1000 means name contains the query phrase exactly
-        if let topScore = scoredPrompts.first?.score, topScore >= 1000 {
+        if let topScore = state.scoredPrompts.first?.score, topScore >= 1000 {
             return
         }
 
         // Debounce: wait 600ms after user stops typing
-        aiSearchTask = Task {
+        state.aiSearchTask = Task {
             try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
 
             guard !Task.isCancelled else { return }
 
             // Re-check if we now have a strong local match (user may have typed more)
-            let currentTopScore = await MainActor.run { scoredPrompts.first?.score ?? 0 }
+            let currentTopScore = await MainActor.run { state.scoredPrompts.first?.score ?? 0 }
             if currentTopScore >= 1000 {
                 return
             }
 
             await MainActor.run {
-                isAISearching = true
+                state.isAISearching = true
             }
 
             // Pass the local results to AI, not all prompts
-            let localResults = await MainActor.run { scoredPrompts.map { $0.prompt } }
+            let localResults = await MainActor.run { state.scoredPrompts.map { $0.prompt } }
 
             if let aiResults = await SearchService.shared.searchWithAI(query: query, in: localResults) {
                 guard !Task.isCancelled else { return }
 
                 await MainActor.run {
                     // Only update if query hasn't changed
-                    if searchText == query {
-                        scoredPrompts = aiResults
-                        lastAISearchQuery = query
+                    if state.searchText == query {
+                        state.scoredPrompts = aiResults
+                        state.lastAISearchQuery = query
                     }
-                    isAISearching = false
+                    state.isAISearching = false
                 }
             } else {
                 await MainActor.run {
-                    isAISearching = false
+                    state.isAISearching = false
                 }
             }
         }
@@ -147,13 +152,13 @@ struct SearchPanelView: View {
     private var emptyStateView: some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: searchText.isEmpty ? "text.quote" : "magnifyingglass")
+            Image(systemName: state.searchText.isEmpty ? "text.quote" : "magnifyingglass")
                 .font(.system(size: 36))
                 .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "No prompts saved yet" : "No matching prompts")
+            Text(state.searchText.isEmpty ? "No prompts saved yet" : "No matching prompts")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "Select text and press Cmd+Shift+P to save" : "Try a different search term")
+            Text(state.searchText.isEmpty ? "Select text and press Cmd+Shift+P to save" : "Try a different search term")
                 .font(.caption)
                 .foregroundColor(.secondary)
             Spacer()
@@ -177,13 +182,13 @@ struct SearchPanelView: View {
             }
             Spacer()
 
-            if isAISearching {
+            if state.isAISearching {
                 HStack(spacing: 4) {
                     ProgressView()
                         .scaleEffect(0.6)
                     Text("AI ranking...")
                 }
-            } else if !searchText.isEmpty && lastAISearchQuery == searchText {
+            } else if !state.searchText.isEmpty && state.lastAISearchQuery == state.searchText {
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
                         .font(.caption2)
@@ -203,18 +208,18 @@ struct SearchPanelView: View {
 
     private func moveSelection(by offset: Int) {
         guard !filteredPrompts.isEmpty else { return }
-        let newIndex = selectedIndex + offset
+        let newIndex = state.selectedIndex + offset
         if newIndex >= 0 && newIndex < filteredPrompts.count {
-            selectedIndex = newIndex
+            state.selectedIndex = newIndex
         }
     }
 
     private func selectCurrentPrompt() {
         guard !filteredPrompts.isEmpty,
-              selectedIndex >= 0,
-              selectedIndex < filteredPrompts.count else { return }
+              state.selectedIndex >= 0,
+              state.selectedIndex < filteredPrompts.count else { return }
 
-        let prompt = filteredPrompts[selectedIndex]
+        let prompt = filteredPrompts[state.selectedIndex]
         promptStore.incrementUsage(id: prompt.id)
         onSelectPrompt(prompt)
     }
@@ -229,7 +234,7 @@ struct SearchFieldView: NSViewRepresentable {
     var onArrowDown: () -> Void
     var onReturn: () -> Void
 
-    func makeNSView(context: Context) -> NSTextField {
+    func makeNSView(context: Context) -> SearchTextField {
         let textField = SearchTextField()
         textField.delegate = context.coordinator
         textField.placeholderString = "Search prompts..."
@@ -239,10 +244,8 @@ struct SearchFieldView: NSViewRepresentable {
         textField.focusRingType = .none
         textField.cell?.sendsActionOnEndEditing = false
 
-        textField.onEscape = onEscape
-        textField.onArrowUp = onArrowUp
-        textField.onArrowDown = onArrowDown
-        textField.onReturn = onReturn
+        // Store coordinator reference for callbacks
+        textField.coordinator = context.coordinator
 
         // Auto-focus
         DispatchQueue.main.async {
@@ -252,10 +255,12 @@ struct SearchFieldView: NSViewRepresentable {
         return textField
     }
 
-    func updateNSView(_ nsView: NSTextField, context: Context) {
+    func updateNSView(_ nsView: SearchTextField, context: Context) {
         if nsView.stringValue != text {
             nsView.stringValue = text
         }
+        // Update coordinator reference so callbacks stay current
+        context.coordinator.parent = self
     }
 
     func makeCoordinator() -> Coordinator {
@@ -273,27 +278,60 @@ struct SearchFieldView: NSViewRepresentable {
             guard let textField = obj.object as? NSTextField else { return }
             parent.text = textField.stringValue
         }
+
+        func handleEscape() {
+            parent.onEscape()
+        }
+
+        func handleArrowUp() {
+            parent.onArrowUp()
+        }
+
+        func handleArrowDown() {
+            parent.onArrowDown()
+        }
+
+        func handleReturn() {
+            parent.onReturn()
+        }
     }
 }
 
 class SearchTextField: NSTextField {
-    var onEscape: (() -> Void)?
-    var onArrowUp: (() -> Void)?
-    var onArrowDown: (() -> Void)?
-    var onReturn: (() -> Void)?
+    weak var coordinator: SearchFieldView.Coordinator?
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 53: // Escape
-            onEscape?()
+            coordinator?.handleEscape()
         case 126: // Arrow Up
-            onArrowUp?()
+            coordinator?.handleArrowUp()
         case 125: // Arrow Down
-            onArrowDown?()
+            coordinator?.handleArrowDown()
         case 36: // Return
-            onReturn?()
+            coordinator?.handleReturn()
         default:
             super.keyDown(with: event)
+        }
+    }
+
+    // Also handle via performKeyEquivalent for better event capture
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        switch event.keyCode {
+        case 53: // Escape
+            coordinator?.handleEscape()
+            return true
+        case 126: // Arrow Up
+            coordinator?.handleArrowUp()
+            return true
+        case 125: // Arrow Down
+            coordinator?.handleArrowDown()
+            return true
+        case 36: // Return
+            coordinator?.handleReturn()
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
         }
     }
 }

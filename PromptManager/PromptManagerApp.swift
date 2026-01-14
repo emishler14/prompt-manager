@@ -41,6 +41,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setDefaultShortcutIfNeeded()
         requestNotificationPermission()
         setupBackgroundRename()
+        setupNotificationObservers()
+    }
+
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenMainWindow),
+            name: NSNotification.Name("OpenMainWindow"),
+            object: nil
+        )
+    }
+
+    @objc private func handleOpenMainWindow() {
+        openMainWindow()
     }
 
     private func setupBackgroundRename() {
@@ -226,13 +240,62 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var mainWindow: NSWindow?
+
     func openMainWindow() {
+        // Close the popover first
+        popover?.performClose(nil)
+
+        // For menu bar apps, we need to set activation policy to show windows
+        NSApp.setActivationPolicy(.regular)
+
+        // Activate the app
         NSApp.activate(ignoringOtherApps: true)
-        if let window = NSApp.windows.first(where: { $0.title == "Prompt Manager" }) {
+
+        // Use our managed window or create one
+        if let window = mainWindow, window.isVisible || !window.isMiniaturized {
+            // Window exists - bring it to front
             window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
         } else {
-            // Create new window if none exists
-            NSApp.sendAction(NSSelectorFromString("newWindowForTab:"), to: nil, from: nil)
+            // Create and show window
+            createAndShowMainWindow()
         }
+    }
+
+    func createAndShowMainWindow() {
+        // Create a new window with MainWindowView
+        let contentView = MainWindowView(store: promptStore)
+        let hostingController = NSHostingController(rootView: contentView)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Prompt Manager"
+        window.contentViewController = hostingController
+        window.minSize = NSSize(width: 600, height: 400)
+
+        // Center on main screen
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let windowFrame = window.frame
+            let x = screenFrame.midX - windowFrame.width / 2
+            let y = screenFrame.midY - windowFrame.height / 2
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+
+        window.setFrameAutosaveName("PromptManagerMainWindow")
+        window.isReleasedWhenClosed = false
+
+        // Store reference and show
+        mainWindow = window
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+
+        // Ensure it's visible
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

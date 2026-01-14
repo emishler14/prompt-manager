@@ -25,18 +25,19 @@ class AccessibilityService {
     /// Get selected text from the frontmost application
     /// Returns nil if no text is selected or if accessibility permission is not granted
     func getSelectedText() -> String? {
-        // Try accessibility API first
-        Logger.logAccessibility("Trying accessibility API method")
-        if let text = getSelectedTextViaAccessibility() {
-            Logger.logAccessibility("Got text via accessibility API (\(text.count) chars)")
+        // Prefer clipboard method - it preserves formatting (line breaks, etc.) better
+        // especially from web browsers and rich text applications
+        Logger.logAccessibility("Trying clipboard method (preserves formatting)")
+        if let text = getSelectedTextViaClipboard() {
+            Logger.logAccessibility("Got text via clipboard (\(text.count) chars)")
             return text
         }
-        Logger.logAccessibility("Accessibility API returned nil, trying clipboard fallback")
+        Logger.logAccessibility("Clipboard method returned nil, trying accessibility API fallback")
 
-        // Fallback to clipboard method
-        let clipboardResult = getSelectedTextViaClipboard()
-        Logger.logAccessibility("Clipboard fallback result: \(clipboardResult != nil ? "success" : "nil")")
-        return clipboardResult
+        // Fallback to accessibility API (works in some apps where clipboard doesn't)
+        let accessibilityResult = getSelectedTextViaAccessibility()
+        Logger.logAccessibility("Accessibility API result: \(accessibilityResult != nil ? "success" : "nil")")
+        return accessibilityResult
     }
 
     /// Primary method: Use Accessibility API to get selected text

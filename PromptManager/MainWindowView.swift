@@ -5,10 +5,11 @@ struct MainWindowView: View {
     @ObservedObject var store: PromptStore
     @State private var showingAddPrompt = false
     @State private var newPromptContent = ""
-    @State private var selectedPromptID: UUID?
+    @State private var selectedPromptIDs: Set<UUID> = []
     @State private var searchText = ""
     @State private var showingExportAlert = false
     @State private var showingImportAlert = false
+    @State private var showingDeleteAlert = false
     @State private var alertMessage = ""
 
     private var filteredPrompts: [Prompt] {
@@ -45,7 +46,7 @@ struct MainWindowView: View {
 
                 Divider()
 
-                List(selection: $selectedPromptID) {
+                List(selection: $selectedPromptIDs) {
                     ForEach(filteredPrompts) { prompt in
                         PromptRowView(prompt: prompt)
                             .tag(prompt.id)
@@ -56,6 +57,7 @@ struct MainWindowView: View {
                                 Divider()
                                 Button("Delete", role: .destructive) {
                                     store.delete(id: prompt.id)
+                                    selectedPromptIDs.remove(prompt.id)
                                 }
                             }
                     }
@@ -76,10 +78,22 @@ struct MainWindowView: View {
             .frame(minWidth: 250)
 
             // Detail View
-            if let selectedID = selectedPromptID,
+            if selectedPromptIDs.count == 1,
+               let selectedID = selectedPromptIDs.first,
                let prompt = store.prompts.first(where: { $0.id == selectedID }) {
-                PromptDetailView(prompt: prompt, store: store)
+                // Single selection - show detail view
+                PromptDetailView(prompt: prompt, store: store, onDelete: {
+                    showingDeleteAlert = true
+                })
+                .id(selectedID) // Force view recreation when selection changes
+            } else if selectedPromptIDs.count > 1 {
+                // Multiple selection - show bulk actions
+                BulkActionsView(
+                    selectedCount: selectedPromptIDs.count,
+                    onDelete: { showingDeleteAlert = true }
+                )
             } else {
+                // No selection
                 VStack(spacing: 12) {
                     Image(systemName: "text.quote")
                         .font(.system(size: 48))
@@ -120,6 +134,17 @@ struct MainWindowView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(alertMessage)
+        }
+        .alert("Delete \(selectedPromptIDs.count == 1 ? "Prompt" : "\(selectedPromptIDs.count) Prompts")?",
+               isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteSelectedPrompts()
+            }
+        } message: {
+            Text(selectedPromptIDs.count == 1
+                 ? "This action cannot be undone."
+                 : "This will delete \(selectedPromptIDs.count) prompts. This action cannot be undone.")
         }
     }
 
@@ -172,6 +197,13 @@ struct MainWindowView: View {
         NSPasteboard.general.setString(prompt.content, forType: .string)
         store.incrementUsage(id: prompt.id)
     }
+
+    private func deleteSelectedPrompts() {
+        for id in selectedPromptIDs {
+            store.delete(id: id)
+        }
+        selectedPromptIDs.removeAll()
+    }
 }
 
 struct PromptRowView: View {
@@ -194,30 +226,38 @@ struct PromptRowView: View {
 struct PromptDetailView: View {
     let prompt: Prompt
     @ObservedObject var store: PromptStore
+    var onDelete: () -> Void
     @State private var editedName: String = ""
     @State private var editedContent: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Name field
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Name")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                TextField("Prompt name", text: $editedName)
+            // Prompt Name section
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Prompt Name")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                TextField("Enter prompt name", text: $editedName)
                     .textFieldStyle(.roundedBorder)
+                    .font(.body)
                     .onSubmit { saveChanges() }
             }
 
-            // Content field
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Content")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            // Prompt Content section
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Prompt")
+                    .font(.headline)
+                    .foregroundColor(.primary)
                 TextEditor(text: $editedContent)
-                    .font(.body)
-                    .frame(minHeight: 200)
-                    .border(Color.secondary.opacity(0.3), width: 1)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200, maxHeight: .infinity)
+                    .padding(4)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                    )
             }
 
             // Metadata
@@ -235,25 +275,30 @@ struct PromptDetailView: View {
             HStack {
                 Button("Copy to Clipboard") {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(prompt.content, forType: .string)
+                    NSPasteboard.general.setString(editedContent, forType: .string)
                     store.incrementUsage(id: prompt.id)
                 }
                 .buttonStyle(.borderedProminent)
 
+                if editedName != prompt.name || editedContent != prompt.content {
+                    Button("Save Changes") {
+                        saveChanges()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
                 Spacer()
 
-                Button("Save Changes") {
-                    saveChanges()
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Delete", systemImage: "trash")
                 }
-                .disabled(editedName == prompt.name && editedContent == prompt.content)
+                .buttonStyle(.bordered)
             }
         }
         .padding()
         .onAppear {
-            editedName = prompt.name
-            editedContent = prompt.content
-        }
-        .onChange(of: prompt.id) { _ in
             editedName = prompt.name
             editedContent = prompt.content
         }
@@ -264,6 +309,41 @@ struct PromptDetailView: View {
         updated.name = editedName
         updated.content = editedContent
         store.update(updated)
+    }
+}
+
+struct BulkActionsView: View {
+    let selectedCount: Int
+    var onDelete: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.accentColor)
+
+            Text("\(selectedCount) prompts selected")
+                .font(.title2)
+                .fontWeight(.medium)
+
+            Text("Use Cmd+Click or Shift+Click to select multiple prompts")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete \(selectedCount) Prompts", systemImage: "trash")
+                    .frame(minWidth: 200)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
