@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var selectedProvider: AIProvider = AIServiceFactory.shared.selectedProvider
     @State private var hasStoredKey: Bool = false
     @State private var launchAtLogin: Bool = false
+    @State private var launchAtLoginError: String?
     @State private var isRenamingPrompts: Bool = false
     @State private var renameResult: String?
 
@@ -61,9 +62,15 @@ struct SettingsView: View {
                     setLaunchAtLogin(enabled: newValue)
                 }
 
-            Text("Automatically start Prompt Manager when you log in.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if let error = launchAtLoginError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            } else {
+                Text("Automatically start Prompt Manager when you log in.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Spacer()
         }
@@ -82,6 +89,7 @@ struct SettingsView: View {
     }
 
     private func setLaunchAtLogin(enabled: Bool) {
+        launchAtLoginError = nil
         if #available(macOS 13.0, *) {
             do {
                 if enabled {
@@ -90,9 +98,14 @@ struct SettingsView: View {
                     try SMAppService.mainApp.unregister()
                 }
             } catch {
-                // Revert the toggle if operation fails
+                // Revert the toggle and show error
                 launchAtLogin = !enabled
+                launchAtLoginError = "Failed to update login settings"
+                Logger.logError("Launch at login failed: \(error.localizedDescription)", category: .app)
             }
+        } else {
+            launchAtLoginError = "Requires macOS 13.0 or later"
+            launchAtLogin = false
         }
     }
 
@@ -314,8 +327,4 @@ struct SettingsView: View {
 struct ConnectionTestResult {
     let isSuccess: Bool
     let message: String
-}
-
-#Preview {
-    SettingsView()
 }

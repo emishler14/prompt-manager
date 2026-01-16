@@ -119,8 +119,7 @@ class OpenAIService: AINameGeneratorService {
         }
 
         guard httpResponse.statusCode == 200 else {
-            let bodyString = String(data: data, encoding: .utf8)
-            Logger.logDebug("OpenAI API error response: \(bodyString ?? "no body")", category: .ai)
+            Logger.logDebug("OpenAI API error: HTTP \(httpResponse.statusCode)", category: .ai)
 
             switch httpResponse.statusCode {
             case 401:

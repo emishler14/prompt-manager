@@ -9,6 +9,9 @@ class PromptStore: ObservableObject {
     /// Maximum allowed prompt content size (1MB)
     static let maxPromptSize = 1_000_000
 
+    /// Tracks whether storage initialization succeeded
+    private(set) var isStorageAvailable: Bool = true
+
     init() {
         // ~/Library/Application Support/PromptManager/prompts.json
         // Note: .applicationSupportDirectory is guaranteed to exist on macOS, but we use guard for defensive coding
@@ -17,8 +20,13 @@ class PromptStore: ObservableObject {
         }
         let appFolder = appSupport.appendingPathComponent("PromptManager", isDirectory: true)
 
-        // Create directory if needed
-        try? FileManager.default.createDirectory(at: appFolder, withIntermediateDirectories: true)
+        // Create directory if needed - log failure but don't crash
+        do {
+            try FileManager.default.createDirectory(at: appFolder, withIntermediateDirectories: true)
+        } catch {
+            Logger.logStorage("Failed to create data directory: \(error.localizedDescription)", type: .error)
+            isStorageAvailable = false
+        }
 
         self.fileURL = appFolder.appendingPathComponent("prompts.json")
         loadAll()
@@ -54,10 +62,40 @@ class PromptStore: ObservableObject {
         }
     }
 
+    /// Validation result for prompt operations
+    enum ValidationResult {
+        case valid
+        case emptyContent
+        case emptyName
+        case contentTooLarge
+        case storageUnavailable
+    }
+
+    /// Validates a prompt before saving
+    func validate(_ prompt: Prompt) -> ValidationResult {
+        guard isStorageAvailable else { return .storageUnavailable }
+        guard !prompt.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .emptyContent }
+        guard !prompt.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .emptyName }
+        guard prompt.content.utf8.count <= Self.maxPromptSize else { return .contentTooLarge }
+        return .valid
+    }
+
     func save(_ prompt: Prompt) {
-        // Validate prompt content size
-        guard prompt.content.utf8.count <= Self.maxPromptSize else {
-            Logger.logStorage("Prompt content exceeds maximum size limit", type: .error)
+        // Validate prompt
+        let validationResult = validate(prompt)
+        guard validationResult == .valid else {
+            switch validationResult {
+            case .emptyContent:
+                Logger.logStorage("Cannot save prompt with empty content", type: .error)
+            case .emptyName:
+                Logger.logStorage("Cannot save prompt with empty name", type: .error)
+            case .contentTooLarge:
+                Logger.logStorage("Prompt content exceeds maximum size limit (\(Self.maxPromptSize) bytes)", type: .error)
+            case .storageUnavailable:
+                Logger.logStorage("Storage unavailable - cannot save prompt", type: .error)
+            case .valid:
+                break
+            }
             return
         }
 

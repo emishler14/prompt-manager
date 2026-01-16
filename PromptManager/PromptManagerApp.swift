@@ -207,14 +207,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Notifications
 
     private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                Logger.logError("Notification permission request failed: \(error.localizedDescription)", category: .app)
+            } else {
+                Logger.logApp("Notification permission \(granted ? "granted" : "denied")")
+            }
+        }
     }
 
     private func showNotification(title: String, body: String) {
-        // Show visual toast
+        // Show visual toast (always works, doesn't require permission)
         toastPanel?.show(title: title, message: body)
 
-        // Also send system notification
+        // Also send system notification (may be blocked by user preferences)
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -226,7 +232,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             trigger: nil // Deliver immediately
         )
 
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                // This is not critical since we have the toast fallback
+                Logger.logDebug("System notification failed: \(error.localizedDescription)", category: .app)
+            }
+        }
     }
 
     @objc private func togglePopover() {

@@ -113,8 +113,3 @@ class ToastPanel: NSPanel {
         })
     }
 }
-
-#Preview {
-    ToastView(title: "Prompt Saved", message: "Executive Summary Template", icon: "checkmark.circle.fill")
-        .frame(width: 300, height: 60)
-}

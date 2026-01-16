@@ -134,7 +134,3 @@ struct InstructionRow: View {
         }
     }
 }
-
-#Preview {
-    OnboardingView(isPresented: .constant(true))
-}

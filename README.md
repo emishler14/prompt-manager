@@ -30,7 +30,7 @@ A native macOS menu bar application for saving, organizing, and quickly accessin
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/prompt-manager.git
+   git clone https://github.com/emishler14/prompt-manager.git
    cd prompt-manager
    ```
 
@@ -153,6 +153,14 @@ Contributions are welcome! Please:
 - Uses `os.log` for logging (view with Console.app)
 - Thread-safe data store with serial dispatch queue
 - Keychain for secure API key storage
+
+## Known Limitations
+
+- **Accessibility Permission Required** - The app cannot capture selected text or auto-paste without Accessibility permission enabled in System Settings
+- **App Sandbox Disabled** - Required for Accessibility features; the app has full filesystem access
+- **AI Features Require Internet** - AI naming and semantic search need an active internet connection
+- **API Rate Limits** - Heavy usage may hit rate limits on AI provider APIs (the app includes 0.5s delays between requests)
+- **Text Capture Reliability** - Some applications may not support text selection capture via Accessibility API; clipboard-based fallback is used
 
 ## Privacy
 

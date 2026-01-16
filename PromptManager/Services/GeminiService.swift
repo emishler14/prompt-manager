@@ -120,8 +120,7 @@ class GeminiService: AINameGeneratorService {
         }
 
         guard httpResponse.statusCode == 200 else {
-            let bodyString = String(data: data, encoding: .utf8)
-            throw GeminiError.apiError(statusCode: httpResponse.statusCode, body: bodyString)
+            throw GeminiError.apiError(statusCode: httpResponse.statusCode)
         }
 
         // Parse the response
@@ -167,7 +166,7 @@ class GeminiService: AINameGeneratorService {
 enum GeminiError: Error {
     case invalidURL
     case invalidResponse
-    case apiError(statusCode: Int, body: String?)
+    case apiError(statusCode: Int)
     case parseError
 
     var localizedDescription: String {
@@ -176,26 +175,21 @@ enum GeminiError: Error {
             return "Invalid API URL"
         case .invalidResponse:
             return "Invalid response from server"
-        case .apiError(let statusCode, let body):
-            var message = "API error (status \(statusCode))"
+        case .apiError(let statusCode):
             switch statusCode {
             case 400:
-                message = "Bad request - check API key format"
+                return "Bad request - check API key format"
             case 401:
-                message = "Invalid API key"
+                return "Invalid API key"
             case 403:
-                message = "API key doesn't have permission"
+                return "API key doesn't have permission"
             case 429:
-                message = "Rate limited - too many requests"
+                return "Rate limited - too many requests"
             case 500...599:
-                message = "Gemini server error (\(statusCode))"
+                return "Gemini server error (\(statusCode))"
             default:
-                break
+                return "API error (status \(statusCode))"
             }
-            if let body = body {
-                Logger.logDebug("Response body: \(body)", category: .ai)
-            }
-            return message
         case .parseError:
             return "Failed to parse API response"
         }

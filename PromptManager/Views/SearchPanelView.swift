@@ -402,11 +402,3 @@ struct KeyboardHintView: View {
         }
     }
 }
-
-#Preview {
-    SearchPanelView(
-        promptStore: PromptStore(),
-        onDismiss: {},
-        onSelectPrompt: { _ in }
-    )
-}

@@ -64,6 +64,7 @@ class PasteService {
         // Key code for 'V' is 9 (0x09)
         guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else {
+            Logger.logError("Failed to create keyboard events for paste - accessibility may not be enabled", category: .accessibility)
             return
         }
 

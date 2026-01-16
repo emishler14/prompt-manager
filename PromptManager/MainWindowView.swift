@@ -151,6 +151,13 @@ struct MainWindowView: View {
     // MARK: - Export/Import
 
     private func exportPrompts() {
+        // Check if there are prompts to export
+        guard !store.prompts.isEmpty else {
+            alertMessage = "No prompts to export. Save some prompts first."
+            showingExportAlert = true
+            return
+        }
+
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.nameFieldStringValue = "prompts-backup.json"
@@ -159,10 +166,10 @@ struct MainWindowView: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             if let count = store.exportPrompts(to: url) {
-                alertMessage = "Successfully exported \(count) prompts."
+                alertMessage = "Successfully exported \(count) prompt\(count == 1 ? "" : "s")."
                 showingExportAlert = true
             } else {
-                alertMessage = "Failed to export prompts."
+                alertMessage = "Failed to export prompts. Please check you have write permission for the selected location."
                 showingExportAlert = true
             }
         }
@@ -176,11 +183,22 @@ struct MainWindowView: View {
         panel.message = "Select a prompts backup file to import"
 
         if panel.runModal() == .OK, let url = panel.url {
+            // Check if file exists and is readable
+            guard FileManager.default.isReadableFile(atPath: url.path) else {
+                alertMessage = "Cannot read the selected file. Please check file permissions."
+                showingImportAlert = true
+                return
+            }
+
             if let count = store.importPrompts(from: url, merge: true) {
-                alertMessage = "Successfully imported \(count) new prompts."
+                if count == 0 {
+                    alertMessage = "No new prompts to import. All prompts in the file already exist."
+                } else {
+                    alertMessage = "Successfully imported \(count) new prompt\(count == 1 ? "" : "s")."
+                }
                 showingImportAlert = true
             } else {
-                alertMessage = "Failed to import prompts. Make sure the file is valid."
+                alertMessage = "Failed to import prompts. The file may be corrupted or in an unsupported format."
                 showingImportAlert = true
             }
         }
@@ -229,6 +247,16 @@ struct PromptDetailView: View {
     var onDelete: () -> Void
     @State private var editedName: String = ""
     @State private var editedContent: String = ""
+    @State private var validationError: String?
+
+    private var hasUnsavedChanges: Bool {
+        editedName != prompt.name || editedContent != prompt.content
+    }
+
+    private var canSave: Bool {
+        !editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !editedContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -271,6 +299,13 @@ struct PromptDetailView: View {
                     .foregroundColor(.secondary)
             }
 
+            // Validation error
+            if let error = validationError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+
             // Actions
             HStack {
                 Button("Copy to Clipboard") {
@@ -279,12 +314,14 @@ struct PromptDetailView: View {
                     store.incrementUsage(id: prompt.id)
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(editedContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                if editedName != prompt.name || editedContent != prompt.content {
+                if hasUnsavedChanges {
                     Button("Save Changes") {
                         saveChanges()
                     }
                     .buttonStyle(.bordered)
+                    .disabled(!canSave)
                 }
 
                 Spacer()
@@ -301,14 +338,31 @@ struct PromptDetailView: View {
         .onAppear {
             editedName = prompt.name
             editedContent = prompt.content
+            validationError = nil
         }
+        .onChange(of: editedName) { _ in validationError = nil }
+        .onChange(of: editedContent) { _ in validationError = nil }
     }
 
     private func saveChanges() {
+        // Validate before saving
+        let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedContent = editedContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedName.isEmpty {
+            validationError = "Name cannot be empty"
+            return
+        }
+        if trimmedContent.isEmpty {
+            validationError = "Content cannot be empty"
+            return
+        }
+
         var updated = prompt
-        updated.name = editedName
+        updated.name = trimmedName
         updated.content = editedContent
         store.update(updated)
+        validationError = nil
     }
 }
 
@@ -352,6 +406,22 @@ struct AddPromptSheet: View {
     @Binding var isPresented: Bool
     @State private var content = ""
 
+    private var trimmedContent: String {
+        content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canAdd: Bool {
+        !trimmedContent.isEmpty
+    }
+
+    private var characterCount: Int {
+        trimmedContent.utf8.count
+    }
+
+    private var isContentTooLarge: Bool {
+        characterCount > PromptStore.maxPromptSize
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Text("Add New Prompt")
@@ -366,6 +436,20 @@ struct AddPromptSheet: View {
                 .frame(minHeight: 150)
                 .border(Color.secondary.opacity(0.3), width: 1)
 
+            // Character count and validation
+            HStack {
+                if isContentTooLarge {
+                    Text("Content too large (\(characterCount) / \(PromptStore.maxPromptSize) bytes)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                } else if !trimmedContent.isEmpty {
+                    Text("\(characterCount) characters")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+
             HStack {
                 Button("Cancel") {
                     isPresented = false
@@ -375,20 +459,17 @@ struct AddPromptSheet: View {
                 Spacer()
 
                 Button("Add Prompt") {
-                    let prompt = Prompt.withTimestampName(content: content)
+                    guard canAdd && !isContentTooLarge else { return }
+                    let prompt = Prompt.withTimestampName(content: trimmedContent)
                     store.save(prompt)
                     isPresented = false
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!canAdd || isContentTooLarge)
                 .keyboardShortcut(.return)
             }
         }
         .padding()
-        .frame(width: 450, height: 300)
+        .frame(width: 450, height: 320)
     }
-}
-
-#Preview {
-    MainWindowView(store: PromptStore())
 }

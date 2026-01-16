@@ -123,13 +123,16 @@ class AccessibilityService {
         let source = CGEventSource(stateID: .hidSystemState)
 
         // Key code for 'C' is 8
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: false)
+        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: false) else {
+            Logger.logError("Failed to create keyboard events for copy - accessibility may not be enabled", category: .accessibility)
+            return
+        }
 
-        keyDown?.flags = .maskCommand
-        keyUp?.flags = .maskCommand
+        keyDown.flags = .maskCommand
+        keyUp.flags = .maskCommand
 
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
     }
 }

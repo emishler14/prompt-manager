@@ -120,8 +120,7 @@ class AnthropicService: AINameGeneratorService {
         }
 
         guard httpResponse.statusCode == 200 else {
-            let bodyString = String(data: data, encoding: .utf8)
-            Logger.logDebug("Anthropic API error response: \(bodyString ?? "no body")", category: .ai)
+            Logger.logDebug("Anthropic API error: HTTP \(httpResponse.statusCode)", category: .ai)
 
             switch httpResponse.statusCode {
             case 401:

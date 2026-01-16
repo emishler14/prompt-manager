@@ -108,7 +108,3 @@ struct MenuBarView: View {
         promptStore.incrementUsage(id: prompt.id)
     }
 }
-
-#Preview {
-    MenuBarView(promptStore: PromptStore())
-}

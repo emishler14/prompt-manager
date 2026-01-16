@@ -67,3 +67,36 @@ fastlane/Preview.html
 
 ## Other
 .DS_Store
+
+# Development source assets (keep only processed assets in Assets.xcassets)
+menu icon*.png
+*.sketch
+*.fig
+
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+*-credentials.json
+*.secret
+
+# Archives and releases
+*.zip
+*.tar.gz
+*.dmg
+*.pkg
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
