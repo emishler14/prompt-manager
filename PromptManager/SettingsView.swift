@@ -8,7 +8,7 @@ struct SettingsView: View {
 
     var body: some View {
         generalSettingsTab
-            .frame(width: 400, height: 200)
+            .frame(width: 400, height: 260)
     }
 
     // MARK: - General Settings Tab
