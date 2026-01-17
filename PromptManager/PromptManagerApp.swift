@@ -40,7 +40,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupKeyboardShortcuts()
         setDefaultShortcutIfNeeded()
         requestNotificationPermission()
-        setupBackgroundRename()
         setupNotificationObservers()
     }
 
@@ -55,14 +54,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleOpenMainWindow() {
         openMainWindow()
-    }
-
-    private func setupBackgroundRename() {
-        // Start network monitoring
-        _ = NetworkMonitor.shared
-
-        // Start background rename service to rename timestamp-named prompts
-        BackgroundRenameService.shared.start(promptStore: promptStore)
     }
 
     private func setupToastPanel() {
@@ -131,55 +122,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let text = selectedText,
            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            // Text found → save as new prompt (with AI naming if enabled)
+            // Text found - save as new prompt with timestamp name
             Logger.logApp("Saving captured text as prompt")
             saveTextAsPrompt(text)
         } else {
-            // No text selected → show search panel
+            // No text selected - show search panel
             Logger.logApp("No text selected, showing search panel")
             showSearchPanel()
         }
     }
 
-    // MARK: - Save with AI Naming
+    // MARK: - Save Prompt
 
     private func saveTextAsPrompt(_ text: String) {
-        let aiNamingEnabled = AIServiceFactory.shared.isAINamingEnabled
-        let hasAPIKey = AIServiceFactory.shared.hasAPIKey()
-
-        Logger.logApp("Saving prompt - AI naming: \(aiNamingEnabled), Has API key: \(hasAPIKey)")
-
-        // If AI naming is disabled or no API key, save immediately with timestamp
-        if !aiNamingEnabled || !hasAPIKey {
-            Logger.logApp("Using timestamp name (AI disabled or no key)")
-            let prompt = Prompt.withTimestampName(content: text)
-            promptStore.save(prompt)
-            showNotification(title: "Prompt Saved", body: prompt.name)
-            return
-        }
-
-        // Show "Saving..." notification
-        showNotification(title: "Saving...", body: "Generating name with AI")
-
-        // Use AI to generate name
-        Task {
-            let aiService = AIServiceFactory.shared.getCurrentService()
-            let name: String
-            if let aiName = await aiService.generateName(for: text) {
-                Logger.logApp("AI generated name: \(aiName)")
-                name = aiName
-            } else {
-                // Fallback to timestamp if AI fails
-                Logger.logApp("AI naming failed, using timestamp fallback")
-                name = "Prompt - \(Date().formatted(date: .abbreviated, time: .shortened))"
-            }
-
-            await MainActor.run {
-                let prompt = Prompt(name: name, content: text)
-                promptStore.save(prompt)
-                showNotification(title: "Prompt Saved", body: name)
-            }
-        }
+        let prompt = Prompt.withTimestampName(content: text)
+        promptStore.save(prompt)
+        showNotification(title: "Prompt Saved", body: prompt.name)
     }
 
     // MARK: - Search Panel

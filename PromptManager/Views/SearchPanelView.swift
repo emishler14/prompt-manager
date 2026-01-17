@@ -5,9 +5,6 @@ class SearchPanelState: ObservableObject {
     @Published var searchText = ""
     @Published var selectedIndex = 0
     @Published var scoredPrompts: [ScoredPrompt] = []
-    @Published var isAISearching = false
-    @Published var lastAISearchQuery = ""
-    var aiSearchTask: Task<Void, Never>?
 }
 
 struct SearchPanelView: View {
@@ -73,10 +70,9 @@ struct SearchPanelView: View {
         .onAppear {
             performLocalSearch()
         }
-        .onChange(of: state.searchText) { newValue in
+        .onChange(of: state.searchText) { _ in
             state.selectedIndex = 0
             performLocalSearch()
-            scheduleAISearch(query: newValue)
         }
         .onChange(of: promptStore.prompts) { _ in
             performLocalSearch()
@@ -87,66 +83,6 @@ struct SearchPanelView: View {
 
     private func performLocalSearch() {
         state.scoredPrompts = SearchService.shared.searchLocal(query: state.searchText, in: promptStore.prompts)
-    }
-
-    private func scheduleAISearch(query: String) {
-        // Cancel any pending AI search
-        state.aiSearchTask?.cancel()
-
-        // Don't AI search for very short queries or empty
-        guard query.count >= 2 else {
-            state.isAISearching = false
-            return
-        }
-
-        // Don't re-run AI search for same query
-        guard query != state.lastAISearchQuery else { return }
-
-        // Check if AI is available
-        guard AIServiceFactory.shared.hasAPIKey() else { return }
-
-        // Skip AI search if we have a strong local match (exact or near-exact name match)
-        // Score > 1000 means name contains the query phrase exactly
-        if let topScore = state.scoredPrompts.first?.score, topScore >= 1000 {
-            return
-        }
-
-        // Debounce: wait 600ms after user stops typing
-        state.aiSearchTask = Task {
-            try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
-
-            guard !Task.isCancelled else { return }
-
-            // Re-check if we now have a strong local match (user may have typed more)
-            let currentTopScore = await MainActor.run { state.scoredPrompts.first?.score ?? 0 }
-            if currentTopScore >= 1000 {
-                return
-            }
-
-            await MainActor.run {
-                state.isAISearching = true
-            }
-
-            // Pass the local results to AI, not all prompts
-            let localResults = await MainActor.run { state.scoredPrompts.map { $0.prompt } }
-
-            if let aiResults = await SearchService.shared.searchWithAI(query: query, in: localResults) {
-                guard !Task.isCancelled else { return }
-
-                await MainActor.run {
-                    // Only update if query hasn't changed
-                    if state.searchText == query {
-                        state.scoredPrompts = aiResults
-                        state.lastAISearchQuery = query
-                    }
-                    state.isAISearching = false
-                }
-            } else {
-                await MainActor.run {
-                    state.isAISearching = false
-                }
-            }
-        }
     }
 
     private var emptyStateView: some View {
@@ -181,21 +117,6 @@ struct SearchPanelView: View {
                 Text("close")
             }
             Spacer()
-
-            if state.isAISearching {
-                HStack(spacing: 4) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                    Text("AI ranking...")
-                }
-            } else if !state.searchText.isEmpty && state.lastAISearchQuery == state.searchText {
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                        .font(.caption2)
-                    Text("AI ranked")
-                }
-                .foregroundColor(.accentColor)
-            }
 
             Text("\(filteredPrompts.count) prompt\(filteredPrompts.count == 1 ? "" : "s")")
         }
